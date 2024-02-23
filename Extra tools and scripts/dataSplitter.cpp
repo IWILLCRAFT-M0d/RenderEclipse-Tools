@@ -25,6 +25,7 @@ unsigned long char2Long(char* dataPos) {
 }
 
 int main(int argc, char** argv) {
+    string stopValue;
     ifstream fileLoaded(argv[1], ios::in | ios_base::binary | ios::ate);
 
     string mainFileName = path(argv[1]).filename().string();
@@ -86,17 +87,11 @@ int main(int argc, char** argv) {
                 if (fileName == "rwID_TEXDICTIONARY") {
                     fileName = mainFileName + "_" + to_string(chunkSel) + ".txd";
                 } else if (fileName == "rwID_AUDIODATA") {
-                    fileName = mainFileName + "_" + to_string(chunkSel) + ".fdp";
+                    fileName = mainFileName + "_" + to_string(chunkSel) + ".snd"; // FDP is a 
                 } else if (fileName == "rwID_AUDIOCUES") {
                     fileName = mainFileName + "_" + to_string(chunkSel) + ".cue";
                 } else if (fileName == "rwID_STATETRANSITION") {
                     fileName = mainFileName + "_" + to_string(chunkSel) + ".rst";
-                } else if (fileName == "rwID_AUDIODATA") {
-                    fileName = mainFileName + "_" + to_string(chunkSel) + ".fdp";
-                } else if (fileName == "rwID_AUDIODATA") {
-                    fileName = mainFileName + "_" + to_string(chunkSel) + ".fdp";
-                } else if (fileName == "rwID_AUDIODATA") {
-                    fileName = mainFileName + "_" + to_string(chunkSel) + ".fdp";
                 } else if (fileName == "rwID_HANIMANIMATION") {
                     fileName = mainFileName + "_" + to_string(chunkSel) + ".anm";
                 } else if (fileName == "rwID_SPLINE") {
@@ -143,7 +138,7 @@ int main(int argc, char** argv) {
         cout << "Chunk has been ended | Actual Position: " << pos << " | File size: " << fullFileSize <<endl;
     } while (pos < fullFileSize);
     
-    cout << endl << endl << endl << "Data has been fully extracted" << endl;
-    Sleep(3000);
+    cout << endl << endl << endl << "Data has been fully extracted - introduce a value to end the program" << endl;
+    cin >> stopValue;
     return 0;
 }
