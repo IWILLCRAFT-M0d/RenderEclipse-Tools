@@ -4,6 +4,12 @@
 
 using namespace std;
 
+unsigned long char2long(char* dataPos) {
+    char tempChar[4];
+    memcpy(tempChar, dataPos, 4);
+    return *(unsigned long*)tempChar;
+}
+
 int main(int argc, char** argv) {
     ifstream file(argv[1], ios::in | ios_base::binary);
     string stopValue;
@@ -29,12 +35,12 @@ int main(int argc, char** argv) {
     for (int i = 0; i < XMLHeaderRead.dataStart; i += 4) {
         data = char2long(fileData+i);
         if (XMLHeaderRead.dataStart-16 <= data && data <= XMLHeaderRead.fileSize-16) {
-            cout << endl;
+            cout << "\n";
             for (int y = data-16; y < XMLHeaderRead.fileSize; y++) {
                 if (fileData[y] != '\0') {
                     text += fileData[y];
                 } else {
-                    cout << "<" << text << "/>" << endl;
+                    cout << "<" << text << "/>\n";
                     text = "";
                     break;
                 }
@@ -47,7 +53,7 @@ int main(int argc, char** argv) {
                     text += fileData[y];
                 } else {
                     if (looped) {
-                        cout << text << "\"" <<endl;
+                        cout << text << "\"\n";
                         text = "";
                         break;
                     } else {
@@ -64,7 +70,7 @@ int main(int argc, char** argv) {
 
     delete[] fileData;
     file.close();
-    cout << endl << "introduce a value to end the program";
+    cout << "\nclose the window or introduce a value to end the program";
     cin >> stopValue;
     return 0;
 }
