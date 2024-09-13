@@ -7,21 +7,29 @@
 using namespace std;
 using namespace std::filesystem;
 
-unsigned long changeEndian(unsigned long value, bool trueornot) {
-    if (trueornot == 0) {
-        return (((value << 24) & 0xff000000)
-            | ((value << 8) & 0xff0000)
-            | ((value >> 8) & 0xff00)
-            | ((value >> 24) & 0xff));
-    } else {
-        return value;
-    }
-}
-
-unsigned long char2Long(char* dataPos) {
+unsigned long readULong(char* dataPos, bool BigEndians = false) {
     char tempChar[4];
     memcpy(tempChar, dataPos, 4);
-    return *(unsigned long*)tempChar;
+    unsigned long tempInt = *(unsigned long*)tempChar;
+    if (BigEndians == true) {
+        tempInt = (
+            ((tempInt << 24) & 0xff000000)
+            | ((tempInt << 8) & 0xff0000)
+            | ((tempInt >> 8) & 0xff00)
+            | ((tempInt >> 24) & 0xff)
+            );
+    }
+    return tempInt;
+}
+
+string readRWString (char* data, unsigned long Position, unsigned long fileNameSize){
+    string RWString;
+    unsigned long fileNameSizeEnd = Position + fileNameSize;
+    while (data[Position] != '\0' && Position < fileNameSizeEnd) {
+        RWString += data[Position];
+        Position++;
+    }
+    return RWString;
 }
 
 int main(int argc, char** argv) {
@@ -31,8 +39,21 @@ int main(int argc, char** argv) {
         cin >> stopValue;
         return 0;
     }
+    struct fileInfo {
+        unsigned long RW_TXD = 0;
+        unsigned long RW_BSP = 0;
+        unsigned long RW_Audio = 0;
+        unsigned long RW_Cues = 0;
+        unsigned long RW_StateTrans = 0;
+        unsigned long RW_Anim = 0;
+        unsigned long RW_Spline = 0;
+        unsigned long RW_Clump = 0;
+        unsigned long RW_DMA = 0;
+        unsigned long RW_RWS = 0;
+        unsigned long RWSAtr = 0;
+        unsigned long Unk = 0;
+    } structFileInfo;
 
-    bool Brokenfile = 0;
 
     for(int t=1; argv[t] != NULL; t++) {
         ifstream fileLoaded(argv[t], ios::in | ios_base::binary | ios::ate);
@@ -44,123 +65,97 @@ int main(int argc, char** argv) {
         char* fullData = new char [fullFileSize];
         fileLoaded.read(fullData, fullFileSize);
         fileLoaded.close();
-
-        // this is very unpractical but seems to work -;=;-
-        short SHSMData = 0;
-        if ((fullFileSize % 2048) == 0) {
-            SHSMData = 1;
-        }
-        
-        char tempChar[4];
-        long unsigned pos = 0;
-        long unsigned chunkSel = 0;
-        long unsigned sussisesval1 = 0;
+    
+        bool BigEndian = false;
+        unsigned long pos = 0;
+        unsigned long chunkSel = 0;
         char* fileData;
         cout << "Starting File Data Spliting | File name: " << mainFileName << "\n\n";
         if (!is_directory("./Extracted Data/") || !exists("./Extracted Data/")) { create_directory("./Extracted Data/");  create_directory("./Extracted Data/Textures"); }
         do {
-            long unsigned header = char2Long(fullData+pos);
+            unsigned long header = readULong(fullData+pos);
+            unsigned long chunkSize = readULong(fullData+(pos += 4));
+            
+            unsigned long chunkEnd = pos + 8 + chunkSize;
+
             chunkSel++;
-            cout << "-- Chunk selected: " << chunkSel << endl;
-            if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-            pos += 4;
-            long unsigned chunkSize = char2Long(fullData+pos);
-            pos += 8;
-            while(true) {
-                if (((chunkSize > 0) && (chunkSize < 32) && pos + 4 < fullFileSize) || (chunkSize > fullFileSize)) {
-                    if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-                    pos += 4;
-                    chunkSize = char2Long(fullData+pos);
-                    pos += 8;
-                } else if (pos >= fullFileSize) {
-                    Brokenfile = 1;
-                    break;
-                } else {
-                    break;
-                }
-            }
+            cout << "-- Chunk selected: " << chunkSel << "\n";
 
-            if (Brokenfile == 1) {
-                cout << "The file cannot be fully readed\n";
-                break;
-            }
+            switch (header) {
+                case 1814: {
+                    cout << "- RenderWare Stream file\n";
+                    unsigned long fileInfo = readULong(fullData+(pos += 8), BigEndian);
 
-            if (header == 1814) {
-                long unsigned fileInfo = char2Long(fullData+pos);
-                pos += 4;
 
-                bool BigEndian = false;
-                if (fileInfo < 1024) {
-                    BigEndian = true;
-                }
-
-                long unsigned fileNameSize = changeEndian(char2Long(fullData+pos), BigEndian);
-                string fileName;
-                if (fileNameSize > 4) {
-                    for(int i=4; fullData[pos+i] != '\0'; i++) {
-                        fileName += fullData[pos+i];
-                        if (i >= fileNameSize+4) { break; }
+                    if (fileInfo > 1024 && BigEndian == false) {
+                        BigEndian = true;
+                        fileInfo = readULong(fullData+pos, BigEndian);
                     }
-                    cout << "- File name: " << fileName << endl;
-                } else {
-                    long unsigned fileTypeRead = changeEndian(char2Long(fullData+pos+24), BigEndian);
-                    for(int i=28; fullData[pos+i] != '\0'; i++) {
-                        fileName += fullData[pos+i];
-                        if (i >= fileTypeRead+28) { break; }
-                    }
-                    cout << "- RW Id: " << fileName << endl;
-                    if (fileName == "rwID_TEXDICTIONARY") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".txd";
-                    } else if (fileName == "rwID_AUDIODATA") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".snd";
-                    } else if (fileName == "rwID_AUDIOCUES") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".cue";
-                    } else if (fileName == "rwID_STATETRANSITION") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".rst";
-                    } else if (fileName == "rwID_HANIMANIMATION") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".anm";
-                    } else if (fileName == "rwID_SPLINE") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".spl";
-                    } else if (fileName == "rwID_RWS" || fileName == "rwpID_BODYDEF") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".rws";
-                    } else if (fileName == "rwID_WORLD") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".bsp";
-                    } else if (fileName == "rwID_CLUMP") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".dff";
-                    } else if (fileName == "rwID_DMORPHANMSTREAM") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".dma";
+
+                    unsigned long preFileData = pos + 4 + fileInfo;
+                    unsigned long fileNameSize = readULong(fullData+(pos+=4), BigEndian);
+                    string fileName = readRWString(fullData, pos += 4, fileNameSize);
+                    if (fileName == "") {
+                        unsigned long fileTypeRead = readULong(fullData+(pos+=24), BigEndian);
+                        string RWID = readRWString(fullData, pos, fileTypeRead);
+                        cout << "- RenderWare ID: " << RWID << "\n";
+                        fileName = mainFileName + "_";
+                        if (RWID == "rwID_TEXDICTIONARY") {
+                            fileName += to_string(structFileInfo.RW_TXD++) + ".txd";
+                        } else if (RWID == "rwID_AUDIODATA") {
+                            fileName += to_string(structFileInfo.RW_Audio++) + ".snd";
+                        } else if (RWID == "rwID_AUDIOCUES") {
+                            fileName += to_string(structFileInfo.RW_Cues++) + ".cue";
+                        } else if (RWID == "rwID_STATETRANSITION") {
+                            fileName += to_string(structFileInfo.RW_StateTrans++) + ".rst";
+                        } else if (RWID == "rwID_HANIMANIMATION") {
+                            fileName += to_string(structFileInfo.RW_Anim++) + ".anm";
+                        } else if (RWID == "rwID_SPLINE") {
+                            fileName += to_string(structFileInfo.RW_Spline++) + ".spl";
+                        } else if (RWID == "rwID_RWS" || fileName == "rwpID_BODYDEF") {
+                            fileName += to_string(structFileInfo.RW_RWS++) + ".rws";
+                        } else if (RWID == "rwID_WORLD") {
+                            fileName += to_string(structFileInfo.RW_BSP++) + ".bsp";
+                        } else if (RWID == "rwID_CLUMP") {
+                            fileName += to_string(structFileInfo.RW_Clump++) + ".dff";
+                        } else if (RWID == "rwID_DMORPHANMSTREAM") {
+                            fileName += to_string(structFileInfo.RW_DMA++) + ".dma";
+                        } else {
+                            fileName += to_string(structFileInfo.Unk++) + ".bin";
+                        }
                     } else {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".bin";
+                        cout << "- File name: " << fileName << endl;
                     }
+                    unsigned long fileSizeNonChunk = readULong(fullData+preFileData, BigEndian);
+                    pos = chunkEnd;
+
+
+                    fileData = new char[fileSizeNonChunk];
+                    memcpy(fileData, fullData+(preFileData + 4), fileSizeNonChunk);
+                    ofstream fileExt("./Extracted Data/" + fileName, ios::out | ios::binary | ios::trunc);
+                    fileExt.write(fileData, fileSizeNonChunk);
+                    fileExt.close();
+                    delete[] fileData;
+                    break;
+                } default: {
+                    fileData = new char[chunkSize];
+                    memcpy(fileData, fullData+pos, chunkSize);
+                    string fileName = "./Extracted Data/" + mainFileName + "_";
+                    if (header == 1796) {
+                        cout << "- RWS Attribute?\n";
+                        fileName += "Atr_" + to_string(structFileInfo.RWSAtr++) + ".bin";
+                    } else {
+                        fileName += to_string(structFileInfo.Unk++) + ".bin";
+                    }
+                    ofstream fileExt(fileName, ios::out | ios::binary | ios::trunc);
+                    fileExt.write(fileData, chunkSize);
+                    fileExt.close();
+                    delete[] fileData;
+                    pos = chunkEnd;
+                    break;
                 }
-                pos += changeEndian(fileInfo, BigEndian);
-                long unsigned fileSizeNonChunk = changeEndian(char2Long(fullData+pos), BigEndian);
-                // cout << "File Size (no chunk) " << fileSizeNonChunk << endl;
-
-
-                fileData = new char[fileSizeNonChunk];
-                pos += 4;
-                memcpy(fileData, fullData+pos, fileSizeNonChunk);
-                ofstream fileExt("./Extracted Data/" + fileName, ios::out | ios::binary | ios::trunc);
-                fileExt.write(fileData, fileSizeNonChunk);
-                fileExt.close();
-                delete[] fileData;
-                pos += fileSizeNonChunk;
                 
-                
-                if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-                // cout << "Actual position: " << pos << " | Full chunk size: " << chunkSize+12 <<endl;
-            } else {
-                fileData = new char[chunkSize];
-                memcpy(fileData, fullData+pos, chunkSize);
-                ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(chunkSel) + ".bin", ios::out | ios::binary | ios::trunc);
-                fileExt.write(fileData, chunkSize);
-                fileExt.close();
-                delete[] fileData;
-
-                pos += chunkSize;
             }
-            // cout << "Chunk has been ended | Actual Position: " << pos << " | File size: " << fullFileSize <<endl;
         } while (pos < fullFileSize);
         
     }

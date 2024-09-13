@@ -107,6 +107,12 @@ void makeRETH(string ARCfile, bool ARCTxt) {
     vector<string> realFileNames;
     while (getline(nameList, tempString)) {
         if (tempString != "") {
+            transform(tempString.begin(),
+            tempString.end(),
+            tempString.begin(),
+            [](unsigned char a)
+            {return tolower(a);
+            });
             realFileNames.push_back(tempString);
             tempString = "";
         }
@@ -139,22 +145,23 @@ void makeRETH(string ARCfile, bool ARCTxt) {
         //this checks any duplicate
         hashesCount = RETHHead.hashesCount;
         vector RETHdata = readRETH();
-        vector lowerFileNames = realFileNames;
-        for (long i = 0; i < realFileNames.size(); i++) {
-            transform(lowerFileNames[i].begin(), lowerFileNames[i].end(), lowerFileNames[i].begin(), [](unsigned char a) {return tolower(a); });
-        } for (long i = 0; i < RETHdata.size(); i++) {
-            transform(RETHdata[i].second.begin(), RETHdata[i].second.end(), RETHdata[i].second.begin(), [](unsigned char b) {return tolower(b); });
+        for (long i = 0; i < RETHdata.size(); i++) {
+            transform(RETHdata[i].second.begin(),
+            RETHdata[i].second.end(),
+            RETHdata[i].second.begin(),
+            [](unsigned char b)
+            {return tolower(b);
+            });
         }
         for (long i = realFileNames.size(); i >= 0; i--) {
             for (long j = 0; j < RETHdata.size(); j++) {
-                if (RETHdata[j].second == lowerFileNames[i]) {
+                if (RETHdata[j].second == realFileNames[i]) {
                     realFileNames.erase(realFileNames.begin() + i);
                     break;
                 }
             }
         }
         RETHdata = vector<pair<unsigned long, string>>();
-        lowerFileNames = vector<string>();
         RETH.seekp(0, ios::end);
     } else {
         //create mode

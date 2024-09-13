@@ -2,16 +2,12 @@
 This page covers some of the file formats from Silent Hill games Develop by Climax (Silent Hill: Origins [Both Climax Los Angeles {CLA} Prototypes and Climax United Kingdom {CUK} versions] and Silent Hill: Shattered Memories.)
 
 This file format covered in this page:
-* \*.ARC (File Containers)
-* \*.XAML/\*.XML Encryption (UI - Silent Hill: Shattered Memories)
-* RenderWare Binary Files (File Containers)
-* \*.SND/\*.MUS (Audio - Silent Hill: Shattered Memories)
-* String Files (Text)
-* Video File Format
-
-Extra notes:
-* DFF (models) viewers
-* Viewing and extracting textures
+* <a href="#arc-file-container">\*.ARC (File Containers)</a>
+* <a href="#xamlxml-ui---shattered-memories">\*.XAML/\*.XML Encryption (UI - Silent Hill: Shattered Memories)</a>
+* <a href="#renderware-stream-files">RenderWare Stream Files (File Containers)</a>
+* <a href="#sndmus-audio---silent-hill-shattered-memories">\*.SND/\*.MUS (Audio - Silent Hill: Shattered Memories)</a>
+* <a href="#string-table">String Files (Text)</a>
+* <a href="#videos-file-format">Video File Format</a>
 
 ## *.ARC (File container)
 Inside files with this extension are the files used by the games. Each game has little variations of the format. Only SHO (CUK) seems to change between PS2 and PSP by a slight detail. All games compression uses ZLib.
@@ -80,7 +76,7 @@ The result will be 4131116712 (0xf63bd6a8)
 ## *XAML/XML (UI) - Shattered Memories
 As per the official Microsoft documentation: ["XAML is a declarative markup language. As applied to the .NET programming model, XAML simplifies creating a UI for a .NET app."](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/xaml/?view=netdesktop-8.0)
 
-Both CLA and CUK Origins uses XML for the interface, while Shattered Memories uses XAML (although a leftover of a level selector, and a file related to subtitles uses XML), but what makes it deserve a whole section is their encryption method which not documented, but is somewhat readable. The investigation was made comparing a non encrypted file and one encrypted, to be specific the file "UI_Bootmenu.xml" which in both Wii and PS2 is not encryped, but in PSP it is encrypted. A further investigation will require read game memory in how the files are unencrypted, but that is far from my knownledge.
+Both CLA and CUK Origins uses XML for the interface, while Shattered Memories uses XAML (although a leftover of a level selector, and a file related to subtitles uses XML), but what makes it deserve a whole section is their obfuscation method which not documented. A further investigation will require to read game functionality, but that is far from IWILLCRAFT knownledge.
 
 Side note: UI_Bootmenu.xml is a leftover from a debug level selector, this is know as this file is also present on Silent Hill: Origins (CUK) and thanks to a [gameplay of a prototype made by Borman (Past To Present Online/PtoPOnline) we can see it in action.](https://youtu.be/HMM1_-eVQhA?si=EgYEu4-muZHWUH8D)
 ```
@@ -100,52 +96,35 @@ The first value is the position of the first tag, if after that value there is a
 0x0E000000 (14)
 ```
 After this normally reading values is impossible, but there seems to be a pattern where the next 4-byte value is some kind of identifier, and the next value is the position of the value that normally are the tags.
-## RenderWare Data
-As previously mention, Climax used RenderWare version 3.7.0.2 and it's seem many file formats that comes with RenderWare are used. However most RenderWare files and some extra data are stored inside files, like a file container. [Leeao made a QuickBMS script for extracting exclusively RenderWare files](https://github.com/leeao/SilentHillOriginsPS2/blob/main/fmt_SilentHillOrigins_PS2_Unpack_Resource.bms) which works with all games in both PlayStation systems, but not in Wii (SHSM) because data has to be read as Big Endian while PS Systems are fully read in Little Endian. In this repository an adjusted version of the script can be found that works with Wii (SHSM). What it do is read the first value which contains the size of the file information header, normally the value is not bigger than 600 bytes and as reading Big Endian values as Little Endian normally gives gigantic values I expect it will never be bigger than 1024 bytes (1 Megabyte). Also a little program coded in C++ (code available in the repository) can be found and it fully extracts all data, although somethings it could bug out and cause a memory saturation so I recommend only use it if you want to extract everything from the file.
+## RenderWare Stream Files
+As previously mention, Climax used RenderWare version 3.7.0.2 and it's seem many file formats that comes with RenderWare are used. However most RenderWare files and some extra data are stored inside files, like a file container. [Leeao made a QuickBMS script for extracting exclusively RenderWare files](https://github.com/leeao/SilentHillOriginsPS2/blob/main/fmt_SilentHillOrigins_PS2_Unpack_Resource.bms) which works with all games in both PlayStation systems, but not in Wii (SHSM) because data has to be read as Big Endian while PS systems are fully read in Little Endian. [In this repository an adjusted version of the script can be found that works with Wii (SHSM).](https://github.com/IWILLCRAFT-M0d/RenderEclipse-Tools-Priv/blob/main/Extra%20tools%20and%20scripts/ClimaxSH_Unpack_Resource.bms) What it do is read the first value which contains the size of the file information header, normally the value is not bigger than 600 bytes and as reading Big Endian values as Little Endian normally gives gigantic values I expect it will never be bigger than 1024 bytes (1 Megabyte). Also a little program coded in C++ (code available in the repository) can be found and it fully extracts all data, although it's not recommended to use with the May 2006 Silent Hill: Origins prototype as it may not work and cause memory saturation.
 ## \*.snd/\*.mus (Audio) - Silent Hill: Shattered Memories
 Shattered Memories uses FMOD as per the official page describe it ["FMOD is an end-to-end solution for adding sound and music to any game. Build adaptive audio using the FMOD Studio and play it in-game using the FMOD Engine."](https://www.fmod.com/studio). Shattered Memories uses version 4. Wii is the console that takes more advantage from it as it uses reverb and has dynamic music which files can be found in data.arc labeled with the extension *.mus, they are just *.xm files with a different file extension and a extra header. In PSP and PS2 they just use static audio that can be found in igc.arc with the extension *.snd although through many other files more of this audio files can be found.
 
 The *.snd can be extracted with both [FSBExt](https://github.com/gdawg/fsbext) and [vgsmtream](https://github.com/vgmstream/vgmstream). I reccomend use FSBExt as it fully extract all data with the incovenience that it extract them as *.genh files, they can be reproduced from the page of vgsmtream and also coverted to *.wav. However extract it you need to remove the header which is everything that comes before "FSB4" and rename the file to *.fsb.
 
-The *.mus files can be open with most players that supports *.xm files (a convenient one being VLC), but the first 72 of the file has to be deleted in other to play them.
+The *.mus files can be open with most players that supports *.xm files (a convenient one being VLC), but the first 72 bytes of the file has to be deleted in other to play them.
 
 Side note: In case of extracting files with the Climax's Silent Hill Split RenderWare Resource script, a file with the extension \*.fdp could get extracted. This files are actually \*.snd files, but with the extension of a project file for FMOD's tools.
-## Subtitules
+## String Table
 Credits to [Bartlomiej Duda.](https://github.com/bartlomiejduda/Tools/blob/master/NEW%20Tools/Silent%20Hill%20Shattered%20Memories/SUB%20file%20format.txt)
 ```
 (Header)
 - char[4] fileSignature 0x02000000
 - unsigned long stringsNumber
 
-(String information)
+(String table information)
 read next two values the many strings detected in stringsNumber
-- unsigned long fileName (hashed)
+- unsigned long stringName (hashed)
 - unsigned long stringSize
 
-now read next strings (as UTF-16) the many strings detected in stringsNumber
+After reading the string table information data starts. Strings are UTF-16 encoded.
 ```
 ## Videos File Format
-This page won't cover in detail the file formats as they are Third-Party based so here it will only list the format and versions.
+This page won't cover in detail the file formats as they are Third-Party based and has been extensively covered and even made compatible with some video players like VLC so here it will only list the format and versions.
 
 PSP games uses "PlayStation Portable Movie Format" also known as "PSMF" made by Sony. Silent Hill: Origins uses version 14 while Shattered Memories uses version 15.
 
 PS2 games uses "PSS" a PS2 video and audio file format made by Sony. All games uses it.
 
 Wii Shattered Memories uses "THP" file format made by Nintendo. The version used by the game is the 0x00011000.
-
-## Extra note: DFF (models) viewers
-Leeao also made a [model viewer for PS2 (CUK) Silent Hill: Origins](https://github.com/leeao/SilentHillOriginsPS2/blob/main/fmt_SilentHillOrigins_PS2.py), the reason why it doesn't work on PSP and Wii is because of the [Native Data PLG](https://gtamods.com/wiki/Native_Data_PLG_(RW_Section)) which is a section that is customized based on the plaform.
-
-For Wii we have a forked [Blender script for importing GTA DFF models](https://github.com/Psycrow101/DragonFF/tree/multi-mesh) focused in adding support to Iron Heavy Games (Developers of many licensed games like SpongeBob SquarePants: Battle for Bikini Bottom [2003]) made by the user Psycrow101
-
-Unfortunately there is no other tool (to my knowledge) that works PSP models, however would be interesting to check out progress on other Leeao project where he covers a [PSP game using RenderWare](https://github.com/leeao/MortalKombat).
-
-Must mention: Wii and GameCube shares the same platform ID so a tool made for a GameCube games should support Wii too.
-## Extra note: Viewing and extracting textures
-The PS2 SHO (CUK) script made by Leeao also works with also works with some PS2 SHO prototypes and PS2 Shattered Memories, Leeao also made a [script for general RenderWare PSP game](https://github.com/leeao/Noesis-Plugins/blob/master/Textures/tex_rw_psp_txd.py) which is unfinished and sometimes it doesn't work, and also the user Zhenёq made a script for [Wii Shattered Memories](https://github.com/Zheneq/Noesis-Plugins/blob/master/fmt_silenthill_wii_tx.py) which doesn't work sometimes too, but is really rough so I mixed all of them in one script which support and extract textures from PSP, PS2 and Wii games.
-
-For extracting data you will need to create a folder named "textures" where you have the *.txd file you are trying to open and the script requires this library: https://github.com/Zheneq/Noesis-Plugins/blob/master/lib_zq_nintendo_tex.py.
-
-The script still having issues when reading small textures from PS2 and Wii.
-
-Must mention: the tool [Magic.TXD](https://gtaforums.com/topic/851436-relopensrc-magictxd/) works with PS2 and Wii textures.
