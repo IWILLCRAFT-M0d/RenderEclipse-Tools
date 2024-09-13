@@ -19,7 +19,7 @@
 # Introduction
 This repository contains tools and documentation specifically made for Climax's Silent Hill games (Silent Hill: Origins [both Climax Los Angeles and Climax U.K versions] and Silent Hill: Shattered Memories) alongside tools that works with the games.
 
-## <a href="https://github.com/IWILLCRAFT-M0d/RenderEclipse-Tools-Priv/releases">RenderEclipse Tools</a>
+## <a href="https://github.com/IWILLCRAFT-M0d/RenderEclipse-Tools/releases">RenderEclipse Tools</a>
 This tool is for extracting data from \*.ARC files from all Climax's Silent Hill games.
 
 Silent Hill: Shattered Memories hash the filenames (unlike Silent Hill: Origins), the tool features an extensive list with most of unhashed filenames.
