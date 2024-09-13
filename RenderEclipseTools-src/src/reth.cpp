@@ -91,5 +91,4 @@ vector<pair<unsigned long, string>> readNames(string filePath, vector<vector<uns
         fileNames.close();
         return fileNameList;
     }
-    return fileNameList;
 }
