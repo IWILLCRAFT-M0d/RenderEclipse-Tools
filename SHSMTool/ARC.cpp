@@ -65,6 +65,8 @@ vector<vector<unsigned long>> readARC(string filePath) {
             //Origins LA
             ARCType = 3;
             fileCount = fileSignature;
+            ARC.seekg(4, ios::beg);
+            ARC.read((char*)&fileSignature, 4);
             ARC.seekg(16, ios::beg);
             break;
     }
@@ -73,7 +75,11 @@ vector<vector<unsigned long>> readARC(string filePath) {
         ARC.read((char*)&ARCFilesRead, 16);
         vecFiles.push_back(vector<unsigned long>());
         vecFiles[i].push_back(ARCFilesRead.fileName);
-        vecFiles[i].push_back(ARCFilesRead.dataPos);
+        if (ARCType == 3) {
+            vecFiles[i].push_back(ARCFilesRead.dataPos + fileSignature);
+        } else {
+            vecFiles[i].push_back(ARCFilesRead.dataPos);
+        }
         vecFiles[i].push_back(ARCFilesRead.dataSize);
         vecFiles[i].push_back(ARCFilesRead.dataSizeReal);
     }
