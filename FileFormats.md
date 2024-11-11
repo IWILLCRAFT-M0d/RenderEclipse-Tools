@@ -116,7 +116,7 @@ Credits to [Bartlomiej Duda.](https://github.com/bartlomiejduda/Tools/blob/maste
 (String table information)
 read next two values the many strings detected in stringsNumber
 - unsigned long stringName (hashed)
-- unsigned long stringSize
+- unsigned long stringPosition
 
 After reading the string table information data starts. Strings are UTF-16 encoded.
 ```

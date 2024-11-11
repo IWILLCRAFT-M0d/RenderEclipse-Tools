@@ -1,4 +1,4 @@
-The compiler use for this tool is MSCV and it's compiled through Visual Studio Code.
+The compiler use for this tool is MSCV.
 
 This tool depends on
 ZLib (Handling game data compresion) - https://www.zlib.net/
