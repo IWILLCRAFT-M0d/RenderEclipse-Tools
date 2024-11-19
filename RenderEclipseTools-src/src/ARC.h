@@ -13,9 +13,16 @@ class classValuesARC {
 	    unsigned long rethSize;
 };
 
-unsigned long endianChangeULong(std::string EBigToELittle);
-std::string endianChangeString(unsigned long ELittleToEBig);
-std::vector<std::vector<unsigned long>> readARC(std::string filePath);
-extern unsigned int ARCType;
-void extractFunc(classValuesARC valuesARC, bool All = true);
-void importFunc(classValuesARC valuesARC, std::string fileImportPath);
+extern classValuesARC valuesARC;
+
+namespace ARC {
+	extern unsigned int ARCType;
+	extern bool compressImport;
+
+
+	std::vector<std::vector<unsigned long>> readARC(std::string filePath);
+	void extractFunc(bool All = true);
+	void importFunc(std::string fileImportPath);
+	unsigned long endianChangeULong(std::string EBigToELittle);
+	std::string endianChangeString(unsigned long ELittleToEBig);
+}

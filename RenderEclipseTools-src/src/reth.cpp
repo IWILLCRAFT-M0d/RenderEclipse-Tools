@@ -1,6 +1,4 @@
 #include <algorithm>
-#include <fstream>
-#include <vector>
 #include <filesystem>
 #include <string>
 
@@ -8,7 +6,6 @@
 #include "arc.h"
 
 #include <wx/wx.h>
-#include <wx/string.h>
 using namespace std;
 using namespace filesystem;
 
@@ -23,7 +20,7 @@ Credits to:
 - SPECIAL THANKS to TPU (XeNTaX page [R.I.P]) as they discovered the hashing
 method that without it I wouldn't have even tried to make this tool. */
 
-unsigned long SHSMWord2Hash(string text) {
+unsigned long RETH::SHSMWord2Hash(string text) {
     unsigned long hash = 0; text += "";
     for (int i = 0; text[i] != '\0'; i++) {
         hash = (hash * 33) ^ tolower(text[i]);
@@ -31,7 +28,7 @@ unsigned long SHSMWord2Hash(string text) {
     return hash;
 }
 
-vector<pair<unsigned long, string>> readNames(string filePath, vector<vector<unsigned long>> ARCdata) {
+vector<pair<unsigned long, string>> RETH::readNames(string filePath, vector<vector<unsigned long>> ARCdata) {
     ifstream fileNames(filePath.c_str(), ios::in | ios_base::binary);
     string fileName;
     unsigned long stringSize;
@@ -42,7 +39,7 @@ vector<pair<unsigned long, string>> readNames(string filePath, vector<vector<uns
         unsigned long namesPos;
         unsigned long namesSize;
     } ARCHeaderRead;
-    switch (ARCType) {
+    switch (ARC::ARCType) {
     case 1:
         struct RETH_Header {
             unsigned long header; //75777520

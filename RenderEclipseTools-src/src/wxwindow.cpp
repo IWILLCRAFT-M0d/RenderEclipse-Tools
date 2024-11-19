@@ -14,11 +14,10 @@
 
 using namespace std;
 using namespace std::filesystem;
-classValuesARC valuesARC;
 
 MainFrame::MainFrame(const wxString& titleBar): wxFrame(nullptr, wxID_ANY, titleBar) {
-    wxLog* logger = new wxLogWindow(this, "Test", true, false);
-    wxLog::SetActiveTarget(logger);
+    // wxLog* logger = new wxLogWindow(this, "Test", true, false);
+    // wxLog::SetActiveTarget(logger);
     wxMenuBar* cMenuBarMain = new wxMenuBar();
     wxMenu* cMenuBar0 = new wxMenu();
     wxMenu* cMenuBar1 = new wxMenu();
@@ -27,12 +26,11 @@ MainFrame::MainFrame(const wxString& titleBar): wxFrame(nullptr, wxID_ANY, title
     cMenuBar0->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarOpenARC, this, cMenuBar0->Append(wxID_ANY, _("&Load file"))->GetId());
     cMenuBar0->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarClose, this, cMenuBar0->Append(wxID_ANY, _("&Close"))->GetId());
     cMenuBar1->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarCredits, this, cMenuBar1->Append(wxID_ANY, _("&Credits"))->GetId());
-
-    mainSizer->Add(panel0, 3, wxEXPAND | wxALL, 10);
-    mainSizer->Add(panel1, 5, wxEXPAND | wxALL, 10);
+    mainSizer->Add(panel0, 1, wxEXPAND | wxALL, 10);
+    // mainSizer->Add(panel1, 5, wxEXPAND | wxALL, 10);
     this->SetSizerAndFit(mainSizer);
     panel0->SetSizerAndFit(treeListSizer);
-    panel1->SetSizerAndFit(infoFileSizer);
+    // panel1->SetSizerAndFit(infoFileSizer);
     treeListSizer->Add(fileListTree, 1, wxEXPAND | wxALL);
     
     SetMenuBar(cMenuBarMain);
@@ -47,11 +45,11 @@ void MainFrame::menuBarOpenARC(wxCommandEvent& evt) {
     if (!fileListTree->IsEmpty()) { fileListTree->Delete(fileListTree->GetRootItem()); }
     valuesARC.pathFileLoaded = fileARC.GetPath();
     wxTreeItemId rootListTree = fileListTree->AddRoot(path(fileARC.GetPath().ToStdString()).filename().string());
-    valuesARC.ARCdata = readARC(fileARC.GetPath().ToStdString());
-    switch (ARCType) {
+    valuesARC.ARCdata = ARC::readARC(fileARC.GetPath().ToStdString());
+    switch (ARC::ARCType) {
     case 1:
         wxLogStatus("Open file is from Shattered Memories");
-        valuesARC.RETH = readNames("./hashes.reth", {});
+        valuesARC.RETH = RETH::readNames("./hashes.reth", {});
         valuesARC.rethSize = valuesARC.RETH.size();
         /*
         0 = reth empty/dont exist
@@ -90,7 +88,7 @@ void MainFrame::menuBarOpenARC(wxCommandEvent& evt) {
 
         for (long i = 0; i < valuesARC.ARCdata.size(); i++) {
             if (valuesARC.fileNameTest == 0) {
-                fileListTree->AppendItem(rootListTree, endianChangeString(valuesARC.ARCdata[i][0]));
+                fileListTree->AppendItem(rootListTree, ARC::endianChangeString(valuesARC.ARCdata[i][0]));
             }
             else {
                 for (unsigned long j = 0; j < valuesARC.rethSize; j++) {
@@ -99,7 +97,7 @@ void MainFrame::menuBarOpenARC(wxCommandEvent& evt) {
                         break;
                     }
                     else if (j == valuesARC.rethSize - 1) {
-                        fileListTree->AppendItem(rootListTree, endianChangeString(valuesARC.ARCdata[i][0]));
+                        fileListTree->AppendItem(rootListTree, ARC::endianChangeString(valuesARC.ARCdata[i][0]));
                     }
                 }
             }
@@ -116,12 +114,12 @@ void MainFrame::menuBarOpenARC(wxCommandEvent& evt) {
         }
         break;
     default:
-        if (ARCType == 2) {
+        if (ARC::ARCType == 2) {
             wxLogStatus("Open file is from Origins (Climax UK)");
         } else {
             wxLogStatus("Open file is from Origins (Climax LA)");
         }
-        valuesARC.RETH = readNames(valuesARC.pathFileLoaded, valuesARC.ARCdata);
+        valuesARC.RETH = RETH::readNames(valuesARC.pathFileLoaded, valuesARC.ARCdata);
         valuesARC.rethSize = valuesARC.RETH.size();
         for (unsigned long i = 0; i < valuesARC.rethSize; i++) {
             fileListTree->AppendItem(rootListTree, valuesARC.RETH[i].second);
@@ -137,7 +135,6 @@ void MainFrame::ShowContextMenu(wxTreeEvent& evt) {
     contextMenu->Remove(Call_Export);
     contextMenu->Remove(Call_ExportAll);
     contextMenu->Remove(Call_Import);
-    
     
     wxString selectedParent = fileListTree->GetItemText((fileListTree->GetRootItem()));
     if (valuesARC.fileItemSelected != selectedParent) {
@@ -155,19 +152,18 @@ void MainFrame::ShowContextMenu(wxTreeEvent& evt) {
 }
 
 void MainFrame::ContextMenu_Export(wxCommandEvent& evt) {
-    extractFunc(valuesARC, false);
+    ARC::extractFunc(false);
 }
 
 void MainFrame::ContextMenu_ExportAll(wxCommandEvent& evt) {
-    extractFunc(valuesARC, true);
+    ARC::extractFunc(true);
 }
 
 void MainFrame::ContextMenu_Import(wxCommandEvent& evt) {
-    if (ARCType != 1) {return;}
-    wxFileDialog fileImport(this, "Select import file", "", "", "", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    wxFileDialog fileImport(this, "Select file to import", "", "", "", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (fileImport.ShowModal() == wxID_CANCEL) { wxLogStatus("No file has been open"); return; }
     
-    importFunc(valuesARC, fileImport.GetPath().ToStdString());
+    ARC::importFunc(fileImport.GetPath().ToStdString());
 }
 
 void MainFrame::menuBarClose(wxCommandEvent& evt) {
@@ -179,7 +175,7 @@ void MainFrame::menuBarCredits(wxCommandEvent& evt) {
     wxAboutDialogInfo aboutInfo;
     aboutInfo.SetName("RenderEclipse Tools");
     aboutInfo.SetVersion("V2");
-    aboutInfo.SetDescription(_("A extration tool for Climax's Silent Hill games"));
+    aboutInfo.SetDescription(_("A modding tool for Climax's Silent Hill games"));
     aboutInfo.SetWebSite("https://github.com/IWILLCRAFT-M0d/RenderEclipse-Tools");
     aboutInfo.AddDeveloper("IWILLCRAFT (Creator)");
     aboutInfo.AddDeveloper("Ikskoks (SHSM Hashing Help)");

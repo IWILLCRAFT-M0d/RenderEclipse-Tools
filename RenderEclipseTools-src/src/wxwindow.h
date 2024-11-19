@@ -6,7 +6,7 @@ class MainFrame : public wxFrame {
 public:
 	wxBoxSizer* m_mainsizerHor;
 	wxPanel* panel0 = new wxPanel(this);
-	wxPanel* panel1 = new wxPanel(this);
+	// wxPanel* panel1 = new wxPanel(this);
 	wxMenu* contextMenu = new wxMenu();
 	wxTreeCtrl* fileListTree = new wxTreeCtrl(panel0);
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -16,10 +16,10 @@ public:
 	wxMenuItem* Call_ExportAll;
 	wxMenuItem* Call_Import;
 	MainFrame(const wxString& titleBar);
-	~MainFrame() {
-		wxLog::SetActiveTarget(nullptr);
-		delete logger;
-	}
+	// ~MainFrame() {
+	// 	wxLog::SetActiveTarget(nullptr);
+	// 	delete logger;
+	// }
 	//Events
 	void menuBarOpenARC(wxCommandEvent& evt);
 	void menuBarClose(wxCommandEvent& evt);
@@ -28,8 +28,8 @@ public:
 	void ContextMenu_Export(wxCommandEvent& evt);
 	void ContextMenu_ExportAll(wxCommandEvent& evt);
 	void ContextMenu_Import(wxCommandEvent& evt);
-private:
-	wxLog *logger;
+// private:
+	// wxLog *logger;
 };
 
 class App : public wxApp {
