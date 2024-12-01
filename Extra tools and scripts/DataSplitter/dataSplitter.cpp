@@ -35,132 +35,131 @@ int main(int argc, char** argv) {
     bool Brokenfile = 0;
 
     for(int t=1; argv[t] != NULL; t++) {
+        unsigned long pos = 0, chunkSel = 0, sussisesval1 = 0, fullFileSize;
+        bool BigEndian = false;
         ifstream fileLoaded(argv[t], ios::in | ios_base::binary | ios::ate);
 
         string mainFileName = path(argv[t]).filename().string();
 
-        unsigned long fullFileSize = fileLoaded.tellg();
+        fullFileSize = fileLoaded.tellg();
         fileLoaded.seekg(0, ios::beg);
-        char* fullData = new char [fullFileSize];
+        char* fileData, *fullData = new char [fullFileSize], tempChar[4];
         fileLoaded.read(fullData, fullFileSize);
         fileLoaded.close();
 
-        // this is very unpractical but seems to work -;=;-
-        short SHSMData = 0;
-        if ((fullFileSize % 2048) == 0) {
-            SHSMData = 1;
-        }
-        
-        char tempChar[4];
-        long unsigned pos = 0;
-        long unsigned chunkSel = 0;
-        long unsigned sussisesval1 = 0;
-        char* fileData;
+        struct sRWStruct {
+            unsigned long ID;
+            unsigned long chunkSize;
+            unsigned long RWID;
+        } RWStruct;
+
+
+        struct sfileType {
+            unsigned short rwID_TEXDICTIONARY = 0;
+            unsigned short rwID_AUDIODATA = 0;
+            unsigned short rwID_AUDIOCUES = 0;
+            unsigned short rwID_STATETRANSITION = 0;
+            unsigned short rwID_HANIMANIMATION = 0;
+            unsigned short rwID_SPLINE = 0;
+            unsigned short rwID_RWS = 0;
+            unsigned short rwID_WORLD = 0;
+            unsigned short rwID_CLUMP = 0;
+            unsigned short rwID_DMORPHANMSTREAM = 0;
+            unsigned short Unknown = 0;
+        } fileType;
+
+
         cout << "Starting File Data Spliting | File name: " << mainFileName << "\n\n";
         if (!is_directory("./Extracted Data/") || !exists("./Extracted Data/")) { create_directory("./Extracted Data/");  create_directory("./Extracted Data/Textures"); }
         do {
-            long unsigned header = char2Long(fullData+pos);
+            memcpy(&RWStruct, fullData+pos, 12);
             chunkSel++;
-            cout << "-- Chunk selected: " << chunkSel << endl;
-            if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-            pos += 4;
-            long unsigned chunkSize = char2Long(fullData+pos);
-            pos += 8;
-            while(true) {
-                if (((chunkSize > 0) && (chunkSize < 32) && pos + 4 < fullFileSize) || (chunkSize > fullFileSize)) {
-                    if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-                    pos += 4;
-                    chunkSize = char2Long(fullData+pos);
-                    pos += 8;
-                } else if (pos >= fullFileSize) {
-                    Brokenfile = 1;
-                    break;
-                } else {
-                    break;
-                }
-            }
+            cout << "-- Chunk selected: " << chunkSel << "\n";
+            pos += 12;
 
-            if (Brokenfile == 1) {
-                cout << "The file cannot be fully readed\n";
-                break;
-            }
-
-            if (header == 1814) {
-                long unsigned fileInfo = char2Long(fullData+pos);
+            if (RWStruct.ID == 1814) {
+                unsigned long fileInfo = char2Long(fullData+pos), nextChunkPos = RWStruct.chunkSize + pos;
                 pos += 4;
 
-                bool BigEndian = false;
-                if (fileInfo < 1024) {
+                BigEndian = false;
+                if (fileInfo < RWStruct.chunkSize) {
                     BigEndian = true;
                 }
 
-                long unsigned fileNameSize = changeEndian(char2Long(fullData+pos), BigEndian);
-                string fileName;
-                if (fileNameSize > 4) {
-                    for(int i=4; fullData[pos+i] != '\0'; i++) {
-                        fileName += fullData[pos+i];
-                        if (i >= fileNameSize+4) { break; }
-                    }
+                unsigned long fileNameSize = changeEndian(char2Long(fullData+pos), BigEndian);
+                string fileName = "", RWIDString = "";
+                for(int i = 4; fullData[pos+i] != '\0'; i++) {
+                    fileName += fullData[pos+i];
+                }
+                if (fileName != "") {
                     cout << "- File name: " << fileName << endl;
-                } else {
-                    long unsigned fileTypeRead = changeEndian(char2Long(fullData+pos+24), BigEndian);
-                    for(int i=28; fullData[pos+i] != '\0'; i++) {
-                        fileName += fullData[pos+i];
-                        if (i >= fileTypeRead+28) { break; }
-                    }
-                    cout << "- RW Id: " << fileName << endl;
-                    if (fileName == "rwID_TEXDICTIONARY") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".txd";
-                    } else if (fileName == "rwID_AUDIODATA") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".snd";
-                    } else if (fileName == "rwID_AUDIOCUES") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".cue";
-                    } else if (fileName == "rwID_STATETRANSITION") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".rst";
-                    } else if (fileName == "rwID_HANIMANIMATION") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".anm";
-                    } else if (fileName == "rwID_SPLINE") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".spl";
-                    } else if (fileName == "rwID_RWS" || fileName == "rwpID_BODYDEF") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".rws";
-                    } else if (fileName == "rwID_WORLD") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".bsp";
-                    } else if (fileName == "rwID_CLUMP") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".dff";
-                    } else if (fileName == "rwID_DMORPHANMSTREAM") {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".dma";
+                }
+
+                unsigned long fileTypeSize = changeEndian(char2Long(fullData + 20 + fileNameSize), BigEndian);
+                for(int i = 24 + fileNameSize; fullData[pos+i] != '\0'; i++) {
+                    RWIDString += fullData[pos+i];
+                }
+                cout << "- RW Id: " << RWIDString << endl;
+                if (fileName == "") {
+                    if (RWIDString == "rwID_TEXDICTIONARY") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_TEXDICTIONARY) + ".txd";
+                        fileType.rwID_TEXDICTIONARY += 1;
+                    } else if (RWIDString == "rwID_AUDIODATA") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_AUDIODATA) + ".snd"; // This need to be changed because origins has another format, this is only for SHSM and maybe Overlord Wii
+                        fileType.rwID_AUDIODATA += 1;
+                    } else if (RWIDString == "rwID_AUDIOCUES") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_AUDIOCUES) + ".cue";
+                        fileType.rwID_AUDIOCUES += 1;
+                    } else if (RWIDString == "rwID_STATETRANSITION") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_STATETRANSITION) + ".rst";
+                        fileType.rwID_STATETRANSITION += 1;
+                    } else if (RWIDString == "rwID_HANIMANIMATION") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_HANIMANIMATION) + ".anm";
+                        fileType.rwID_HANIMANIMATION += 1;
+                    } else if (RWIDString == "rwID_SPLINE") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_SPLINE) + ".spl";
+                        fileType.rwID_SPLINE += 1;
+                    } else if (RWIDString == "rwID_RWS" || RWIDString == "rwpID_BODYDEF") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_RWS) + ".rws";
+                        fileType.rwID_RWS += 1;
+                    } else if (RWIDString == "rwID_WORLD") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_WORLD) + ".bsp";
+                        fileType.rwID_WORLD += 1;
+                    } else if (RWIDString == "rwID_CLUMP") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_CLUMP) + ".dff";
+                        fileType.rwID_CLUMP += 1;
+                    } else if (RWIDString == "rwID_DMORPHANMSTREAM") {
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_DMORPHANMSTREAM) + ".dma";
+                        fileType.rwID_DMORPHANMSTREAM += 1;
                     } else {
-                        fileName = mainFileName + "_" + to_string(chunkSel) + ".bin";
+                        fileName = mainFileName + "_" + to_string(fileType.Unknown) + ".bin";
+                        fileType.Unknown += 1;
                     }
                 }
+                
                 pos += changeEndian(fileInfo, BigEndian);
-                long unsigned fileSizeNonChunk = changeEndian(char2Long(fullData+pos), BigEndian);
-                // cout << "File Size (no chunk) " << fileSizeNonChunk << endl;
+                unsigned long fileSize = changeEndian(char2Long(fullData+pos), BigEndian);
 
 
-                fileData = new char[fileSizeNonChunk];
+                fileData = new char[fileSize];
                 pos += 4;
-                memcpy(fileData, fullData+pos, fileSizeNonChunk);
+                memcpy(fileData, fullData+pos, fileSize);
                 ofstream fileExt("./Extracted Data/" + fileName, ios::out | ios::binary | ios::trunc);
-                fileExt.write(fileData, fileSizeNonChunk);
+                fileExt.write(fileData, fileSize);
                 fileExt.close();
                 delete[] fileData;
-                pos += fileSizeNonChunk;
-                
-                
-                if (SHSMData == 1) { while (pos % 4) {pos += 1;} }
-                // cout << "Actual position: " << pos << " | Full chunk size: " << chunkSize+12 <<endl;
+                pos = nextChunkPos;
             } else {
-                fileData = new char[chunkSize];
-                memcpy(fileData, fullData+pos, chunkSize);
-                ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(chunkSel) + ".bin", ios::out | ios::binary | ios::trunc);
-                fileExt.write(fileData, chunkSize);
+                fileData = new char[RWStruct.chunkSize];
+                memcpy(fileData, fullData+pos-12, RWStruct.chunkSize);
+                ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(fileType.Unknown) + ".bin", ios::out | ios::binary | ios::trunc);
+                fileType.Unknown += 1;
+                fileExt.write(fileData, RWStruct.chunkSize);
                 fileExt.close();
                 delete[] fileData;
 
-                pos += chunkSize;
+                pos += RWStruct.chunkSize;
             }
-            // cout << "Chunk has been ended | Actual Position: " << pos << " | File size: " << fullFileSize <<endl;
         } while (pos < fullFileSize);
         
     }
