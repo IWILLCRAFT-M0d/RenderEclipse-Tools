@@ -29,14 +29,11 @@ int main(int argc, char** argv) {
     char* fileData = new char [XMLHeaderRead.fileSize];
     file.read(fileData, XMLHeaderRead.fileSize);
 
-    bool singleAtr = false;
+    unsigned long data, tagsCount;
+    bool singleAtr = false, looped;
     char tempChar[4];
-    unsigned data;
-    string text;
-    string extratext;
+    string text, extratext;
     vector<string> tags;
-    unsigned tagsCount;
-    bool looped;
     for (int i = 0; i < XMLHeaderRead.dataStart; i += 4) {
         data = char2long(fileData+i);
         if (XMLHeaderRead.dataStart-16 <= data && data <= XMLHeaderRead.fileSize-16) {

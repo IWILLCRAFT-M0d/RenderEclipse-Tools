@@ -8,7 +8,7 @@ using namespace std;
 using namespace std::filesystem;
 
 unsigned long changeEndian(unsigned long value, bool trueornot) {
-    if (trueornot == 0) {
+    if (trueornot == true) {
         return (((value << 24) & 0xff000000)
             | ((value << 8) & 0xff0000)
             | ((value >> 8) & 0xff00)
@@ -35,10 +35,9 @@ int main(int argc, char** argv) {
     bool Brokenfile = 0;
 
     for(int t=1; argv[t] != NULL; t++) {
-        unsigned long pos = 0, chunkSel = 0, sussisesval1 = 0, fullFileSize;
+        unsigned long pos = 0, chunkSel = 0, fullFileSize, animationFormatCheck;
         bool BigEndian = false;
         ifstream fileLoaded(argv[t], ios::in | ios_base::binary | ios::ate);
-
         string mainFileName = path(argv[t]).filename().string();
 
         fullFileSize = fileLoaded.tellg();
@@ -69,20 +68,18 @@ int main(int argc, char** argv) {
         } fileType;
 
 
-        cout << "Starting File Data Spliting | File name: " << mainFileName << "\n\n";
+        cout << "Starting File Data Spliting | File name: " << mainFileName << "\n";
         if (!is_directory("./Extracted Data/") || !exists("./Extracted Data/")) { create_directory("./Extracted Data/");  create_directory("./Extracted Data/Textures"); }
         do {
-            memcpy(&RWStruct, fullData+pos, 12);
-            chunkSel++;
-            cout << "-- Chunk selected: " << chunkSel << "\n";
-            pos += 12;
+            memcpy(&RWStruct, fullData+pos, 12); BigEndian = false; pos += 12; chunkSel++;
+            cout << "\n-- Chunk selected: " << chunkSel << "\n";
+            
 
             if (RWStruct.ID == 1814) {
                 unsigned long fileInfo = char2Long(fullData+pos), nextChunkPos = RWStruct.chunkSize + pos;
                 pos += 4;
 
-                BigEndian = false;
-                if (fileInfo < RWStruct.chunkSize) {
+                if (fileInfo > 4096) {
                     BigEndian = true;
                 }
 
@@ -99,13 +96,13 @@ int main(int argc, char** argv) {
                 for(int i = 24 + fileNameSize; fullData[pos+i] != '\0'; i++) {
                     RWIDString += fullData[pos+i];
                 }
-                cout << "- RW Id: " << RWIDString << endl;
+                cout << "- RW ID: " << RWIDString << endl;
                 if (fileName == "") {
                     if (RWIDString == "rwID_TEXDICTIONARY") {
                         fileName = mainFileName + "_" + to_string(fileType.rwID_TEXDICTIONARY) + ".txd";
                         fileType.rwID_TEXDICTIONARY += 1;
                     } else if (RWIDString == "rwID_AUDIODATA") {
-                        fileName = mainFileName + "_" + to_string(fileType.rwID_AUDIODATA) + ".snd"; // This need to be changed because origins has another format, this is only for SHSM and maybe Overlord Wii
+                        fileName = mainFileName + "_" + to_string(fileType.rwID_AUDIODATA) + ".snd";
                         fileType.rwID_AUDIODATA += 1;
                     } else if (RWIDString == "rwID_AUDIOCUES") {
                         fileName = mainFileName + "_" + to_string(fileType.rwID_AUDIOCUES) + ".cue";
@@ -136,13 +133,33 @@ int main(int argc, char** argv) {
                         fileType.Unknown += 1;
                     }
                 }
-                
+
                 pos += changeEndian(fileInfo, BigEndian);
                 unsigned long fileSize = changeEndian(char2Long(fullData+pos), BigEndian);
 
 
                 fileData = new char[fileSize];
                 pos += 4;
+
+                if (RWIDString == "rwID_HANIMANIMATION") {
+                    animationFormatCheck = char2Long(fullData+pos+16);
+                    switch (animationFormatCheck) {
+                        case 1:
+                        case 2:
+                            cout << "- Base RenderWare Animation format version\n";
+                            break;
+                        case 4355:
+                            cout << "- General Climax games format version\n";
+                            break;
+                        case 4357:
+                            cout << "- Silent Hill: Shattered Memories version\n";
+                            break;
+                        default:
+                            cout << "- Unknown format version\n";
+                            break;
+                    }
+                }
+
                 memcpy(fileData, fullData+pos, fileSize);
                 ofstream fileExt("./Extracted Data/" + fileName, ios::out | ios::binary | ios::trunc);
                 fileExt.write(fileData, fileSize);
@@ -150,6 +167,13 @@ int main(int argc, char** argv) {
                 delete[] fileData;
                 pos = nextChunkPos;
             } else {
+                if (RWStruct.ID == 1820) {
+                    cout << "Origins RenderWare Stream file attributes\n";
+                } else if (RWStruct.ID == 1796) {
+                    cout << "Climax special attributes?\n";
+                } else if (RWStruct.ID == 0) {
+                    cout << "Empty file\n";
+                }
                 fileData = new char[RWStruct.chunkSize];
                 memcpy(fileData, fullData+pos-12, RWStruct.chunkSize);
                 ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(fileType.Unknown) + ".bin", ios::out | ios::binary | ios::trunc);
