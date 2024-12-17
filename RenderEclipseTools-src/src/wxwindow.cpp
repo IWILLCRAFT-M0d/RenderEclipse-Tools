@@ -1,23 +1,23 @@
 #include "wxwindow.h"
-#include <wx/wx.h>
-#include <wx/treectrl.h>
 #include <wx/string.h>
 #include <wx/mstream.h>
 #include <wx/utils.h>
 #include <wx/aboutdlg.h>
 
-#include <vector>
 #include <sstream>
 #include <filesystem>
+
 #include "ARC.h"
 #include "reth.h"
+#include "fileLoader.h"
+#include <zlib.h>
 
 using namespace std;
 using namespace std::filesystem;
 
 MainFrame::MainFrame(const wxString& titleBar): wxFrame(nullptr, wxID_ANY, titleBar) {
-    // wxLog* logger = new wxLogWindow(this, "Test", true, false);
-    // wxLog::SetActiveTarget(logger);
+    wxLog* logger = new wxLogWindow(this, "Test", true, false);
+    wxLog::SetActiveTarget(logger);
     wxMenuBar* cMenuBarMain = new wxMenuBar();
     wxMenu* cMenuBar0 = new wxMenu();
     wxMenu* cMenuBar1 = new wxMenu();
@@ -26,11 +26,11 @@ MainFrame::MainFrame(const wxString& titleBar): wxFrame(nullptr, wxID_ANY, title
     cMenuBar0->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarOpenARC, this, cMenuBar0->Append(wxID_ANY, _("&Load file"))->GetId());
     cMenuBar0->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarClose, this, cMenuBar0->Append(wxID_ANY, _("&Close"))->GetId());
     cMenuBar1->Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::menuBarCredits, this, cMenuBar1->Append(wxID_ANY, _("&Credits"))->GetId());
-    mainSizer->Add(panel0, 1, wxEXPAND | wxALL, 10);
-    // mainSizer->Add(panel1, 5, wxEXPAND | wxALL, 10);
+    mainSizer->Add(panel0, 3, wxEXPAND | wxALL, 10);
+    mainSizer->Add(panel1, 5, wxEXPAND | wxALL, 10);
     this->SetSizerAndFit(mainSizer);
     panel0->SetSizerAndFit(treeListSizer);
-    // panel1->SetSizerAndFit(infoFileSizer);
+    panel1->SetSizerAndFit(infoFileSizer);
     treeListSizer->Add(fileListTree, 1, wxEXPAND | wxALL);
     
     SetMenuBar(cMenuBarMain);
@@ -135,15 +135,18 @@ void MainFrame::ShowContextMenu(wxTreeEvent& evt) {
     contextMenu->Remove(Call_Export);
     contextMenu->Remove(Call_ExportAll);
     contextMenu->Remove(Call_Import);
+    contextMenu->Remove(Call_LoadFile);
     
     wxString selectedParent = fileListTree->GetItemText((fileListTree->GetRootItem()));
     if (valuesARC.fileItemSelected != selectedParent) {
         Call_Export = contextMenu->Append(wxID_ANY, "&Export");
         Call_Import = contextMenu->Append(wxID_ANY, "&Import");
+        Call_LoadFile = contextMenu->Append(wxID_ANY, "&Load File");
         //I have seen that connect is no longer used and replaced with Bind() but for some
         //reason Bind() doesn't work for this case.
         Connect(Call_Export->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrame::ContextMenu_Export), NULL, this);
         Connect(Call_Import->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrame::ContextMenu_Import), NULL, this);
+        Connect(Call_LoadFile->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrame::ContextMenu_LoadFile), NULL, this);
     } else if (valuesARC.fileItemSelected == selectedParent) {
         Call_ExportAll = contextMenu->Append(wxID_ANY, "&Export all files");
         Connect(Call_ExportAll->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrame::ContextMenu_ExportAll), NULL, this);
@@ -164,6 +167,82 @@ void MainFrame::ContextMenu_Import(wxCommandEvent& evt) {
     if (fileImport.ShowModal() == wxID_CANCEL) { wxLogStatus("No file has been open"); return; }
     
     ARC::importFunc(fileImport.GetPath().ToStdString());
+}
+
+void MainFrame::ContextMenu_LoadFile(wxCommandEvent& evt) {
+    // wxLogStatus("Opened a file");
+    delete[] RWSFileListTree;
+    char *rawData, *data;
+    bool rethEmpty = false;
+    unsigned long hashedStringFileName2Int, unHashedStringFileName2Int, fileIndex, fileInfo_Header, pos = 0;
+    string extractPath, fileName = valuesARC.fileItemSelected.ToStdString();
+    
+
+    unHashedStringFileName2Int = ARC::endianChangeULong(fileName);
+    hashedStringFileName2Int = RETH::SHSMWord2Hash(valuesARC.fileItemSelected.ToStdString());
+    
+    
+    if (valuesARC.RETH.size() == 0) { rethEmpty = true; }
+    ifstream ARC(valuesARC.pathFileLoaded, ios::in | ios_base::binary);
+
+    for (unsigned long i = 0; i < valuesARC.ARCdata.size(); i++) {
+        if (ARC::ARCType == 1) {
+            if (unHashedStringFileName2Int == valuesARC.ARCdata[i][0]) {
+                fileIndex = i;
+                    break;
+            } else if (hashedStringFileName2Int == valuesARC.ARCdata[i][0]) {
+                fileIndex = i;
+                    break;
+            }
+        } else if (fileName == valuesARC.RETH[i].second) {
+            fileIndex = i;
+                break;
+        }
+    }
+
+    // if (rethEmpty == true || fileName == valuesARC.RETH[fileIndex].second) {}
+    if (valuesARC.ARCdata[fileIndex][3] != 0 && ARC::ARCType != 3) {
+        rawData = new char[valuesARC.ARCdata[fileIndex][2]];
+        ARC.seekg(valuesARC.ARCdata[fileIndex][1], ios::beg);
+        ARC.read(rawData, valuesARC.ARCdata[fileIndex][2]);
+        data = new char[valuesARC.ARCdata[fileIndex][3]];
+        uncompress((Bytef*)data, &valuesARC.ARCdata[fileIndex][3],
+        (Bytef*)rawData, valuesARC.ARCdata[fileIndex][2]);
+        delete[] rawData;
+    } else {
+        data = new char[valuesARC.ARCdata[fileIndex][2]];
+        ARC.seekg(valuesARC.ARCdata[fileIndex][1], ios::beg);
+        ARC.read(data, valuesARC.ARCdata[fileIndex][2]);
+    }
+
+
+fileHeader_Analysis:
+    fileInfo_Header = fileLoader::char2Long(data+pos);
+    switch (fileInfo_Header) {
+        case 2: //String table
+            wxLogStatus("String table opened");
+            break;
+        case 1814: //RenderWare Stream
+        case 1820:
+            wxLogStatus("RWS opened");
+            RWSFileListTree = new wxTreeCtrl(panel1);
+            infoFileSizer->Add(RWSFileListTree, 1, wxEXPAND | wxALL);
+            break;
+        default:
+            if (ARC::ARCType == 3 && pos != 192) {
+                pos = 192;
+                goto fileHeader_Analysis;
+            } else if (ARC::ARCType == 1) {
+                fileInfo_Header = fileLoader::char2Long(data+8);
+                if (fileInfo_Header == 1180189254) {
+                    wxLogStatus("XAML/XML SHSM Encripted opened");
+                    break;
+                }
+            }
+            wxLogStatus("%i", fileInfo_Header);
+            break;
+    }
+    delete[] data;
 }
 
 void MainFrame::menuBarClose(wxCommandEvent& evt) {

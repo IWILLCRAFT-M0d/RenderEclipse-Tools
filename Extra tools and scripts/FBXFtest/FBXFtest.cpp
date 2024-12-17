@@ -27,70 +27,65 @@ int main(int argc, char** argv) {
     }
 
     char* fileData = new char [XMLHeaderRead.fileSize];
+    file.seekg(0, ios::beg);
     file.read(fileData, XMLHeaderRead.fileSize);
 
-    unsigned long data, tagsCount;
-    bool singleAtr = false, looped;
+    unsigned long data;
+    bool looped;
     char tempChar[4];
     string text, extratext;
     vector<string> tags;
-    for (int i = 0; i < XMLHeaderRead.dataStart; i += 4) {
+    for (unsigned long i = 16; i < XMLHeaderRead.dataStart; i += 4) {
         data = char2long(fileData+i);
-        if (XMLHeaderRead.dataStart-16 <= data && data <= XMLHeaderRead.fileSize-16) {
+        if (XMLHeaderRead.dataStart <= data && data <= XMLHeaderRead.fileSize) {
             cout << "\n";
-            if (data-17 == XMLHeaderRead.dataStart || fileData[data-15] == '\0' || fileData[data-17] == '\0') {
-                for (int y = data-16; y < XMLHeaderRead.fileSize; y++) {
+            if (data == XMLHeaderRead.dataStart || fileData[data-1] == '\0') {
+                for (unsigned long y = data; y < XMLHeaderRead.fileSize; y++) {
                     if (fileData[y] != '\0') {
                         text += fileData[y];
                     } else {
-                        tags.push_back(text);
-                        tagsCount++;
                         cout << "<" << text;
-                        text = "";
-                        data = char2long(fileData+i+4);
-                        for (i; data == 14 || data == 30 || data == 98310 || data == 98318 || data == 98334; i+=12) {
+                        
+                        
+                        tags.push_back(text); text = ""; i += 4;
+
+
+                        // data = char2long(fileData+i);
+                        data = (char2long(fileData+i) & 6) >> 1;
+
+                        for (i; data == 3; i+=12) {
                             looped = false;
-                            singleAtr = false;
-                            if (data == 14) {
-                                singleAtr = true;
-                                extratext = " ";
-                            } else {
-                                extratext = "\n";
-                            }
-                            data = char2long(fileData+(i+8))-16;
-                            for (int t = data; true; t++) {
-                                if (fileData[t] != '\0') {
-                                    text += fileData[t];
+                            data = char2long(fileData+i+4);
+                            while (true) {
+                                if (fileData[data] != '\0') {
+                                    text += fileData[data]; data++;
                                 } else {
-                                    if (looped) {
+                                    if (!looped) {
+                                        cout << "\n" << text << "=\"";
+                                        data = char2long(fileData+(i+8));
+                                        text = "";
+                                        looped = true;
+                                    } else {
                                         cout << text << "\"";
                                         text = "";
                                         break;
-                                    } else {
-                                        cout << extratext << text << "=\"";
-                                        t = char2long(fileData+(i+12))-17;
-                                        text = "";
-                                        looped = true;
                                     }
                                 }
                             }
-                            data = char2long(fileData+(i+16));
+                            if (i+12 >= XMLHeaderRead.dataStart) {
+                                i += 12;
+                                break;
+                            }
+                            data = (char2long(fileData+i+12) & 6) >> 1;
                         }
-                        if (tagsCount != 1) {
-                            cout << "\\>\n";
-                        } else {
-                            cout << ">\n";
-                        }
-                        if (singleAtr == true) {
-                            cout << "--- single atribute, nothing within\n";
-                        }
+                        cout << ">\n";
                         break;
                     }
                 }
             }
         }
     }
-    cout << "\n<" << tags[0] << "\\>";
+    // cout << "\n<" << tags[0] << "\\>";
     delete[] fileData;
     file.close();
     cout << "\nclose the window or introduce a value to end the program";
