@@ -166,6 +166,38 @@ int main(int argc, char** argv) {
                 fileExt.close();
                 delete[] fileData;
                 pos = nextChunkPos;
+            } else if (RWStruct.ID == 3841) {
+                cout << "Shattered Memories *.SND file\n";
+                pos += 72;
+                unsigned long FEVSize = char2Long(fullData+pos), FEVPos = char2Long(fullData+pos+4) + 20;
+                string FEVFile = "", FSBFile = "";
+                for(int i = 8; fullData[pos+i] != '\0'; i++) {
+                    FEVFile += fullData[pos+i];
+                }
+
+                pos += 72;
+                unsigned long FSBSize = char2Long(fullData+pos), FSBPos = char2Long(fullData+pos+4) + 20;
+                for(int i = 8; fullData[pos+i] != '\0'; i++) {
+                    FSBFile += fullData[pos+i];
+                }
+                
+
+                cout << "- File names: " << FEVFile  << " + " << FSBFile << endl;
+                
+                char* FEVData = new char[FEVSize];
+                memcpy(FEVData, fullData+FEVPos, FEVSize);
+                ofstream FEVFileExt("./Extracted Data/" + FEVFile, ios::out | ios::binary | ios::trunc);
+                FEVFileExt.write(FEVData, FEVSize);
+                FEVFileExt.close();
+                delete[] FEVData;
+
+                char* FSBData = new char[FSBSize];
+                memcpy(FSBData, fullData+FSBPos, FSBSize);
+                ofstream FSBFileExt("./Extracted Data/" + FSBFile, ios::out | ios::binary | ios::trunc);
+                FSBFileExt.write(FSBData, FSBSize);
+                FSBFileExt.close();
+                delete[] FSBData;
+                break;
             } else {
                 if (RWStruct.ID == 1820) {
                     cout << "Origins RenderWare Stream file attributes\n";

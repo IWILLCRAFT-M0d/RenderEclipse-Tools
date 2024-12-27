@@ -34,7 +34,7 @@ This plugin for [Noesis](https://www.richwhitehouse.com/index.php?content=inc_pr
 For it usage it is required to download this library (https://github.com/Zheneq/Noesis-Plugins/blob/master/lib_zq_nintendo_tex.py), and for extracting data you will need to create a folder named "textures" in the same folder you have the \*.txd file you are trying to open.
 
 ## <a href="./Extra tools and scripts/DataSplitter.exe">DataSplitter</a>
-DataSplitter.exe is a CLI tool that splits RenderWare Stream files. For it usage drag and drop the proper file over the *.exe and it will start working.
+DataSplitter.exe is a CLI tool that splits RenderWare Stream and Silent Hill: Shattered Memories \*.snd files. For it usage drag and drop the proper file over the *.exe and it will start working.
 
 Silent Hill: Origins PS2 May 17, 2006 requires some modifications with an Hex editor as files contains 192 bytes of gibberish data at the beginning of each file.
 
