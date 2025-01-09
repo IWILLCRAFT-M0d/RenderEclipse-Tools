@@ -72,4 +72,4 @@ Tools and scripts made by people unrelated to this repository.
 * <a href="https://github.com/bartlomiejduda/Tools/tree/master/NEW%20Tools/Silent%20Hill%20Shattered%20Memories">A repository that contains documentation and some tools for Silent Hill: Shattered Memories</a>
 * <a href="https://github.com/Parik27/DragonFF">DragonDff</a> a Blender plugin for importing and exporting RenderWare \*.dff files and some of the file formats from Grand Theft Auto 3 to San Andreas.
 * <a href="https://github.com/Psycrow101/Blender-3D-RW-Anm-plugin">Blender-3D-RW-Anm-plugin</a> a Blender plugin for importing and exporting some of the versions of the RenderWare \*.anm file format, including the used in CUK's Silent Hill: Origins.
-* <a href="https://github.com/iluny1/SilentHillOrigins_PS2_AudioExtractor">Silent Hill: Origins PS2 Audio Extractor</a> an audio extractor for both PS2 and PS2 Silent Hill: Origins (CLA and CUK versions).
+* <a href="https://github.com/iluny1/SilentHillOrigins_PS2_AudioExtractor">Silent Hill: Origins PS2 Audio Extractor</a> an audio extractor for both PS2 and PSP Silent Hill: Origins (CLA and CUK versions).
