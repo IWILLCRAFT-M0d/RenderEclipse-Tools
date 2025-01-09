@@ -116,8 +116,12 @@ int main(int argc, char** argv) {
                     } else if (RWIDString == "rwID_SPLINE") {
                         fileName = mainFileName + "_" + to_string(fileType.rwID_SPLINE) + ".spl";
                         fileType.rwID_SPLINE += 1;
-                    } else if (RWIDString == "rwID_RWS" || RWIDString == "rwpID_BODYDEF") {
-                        fileName = mainFileName + "_" + to_string(fileType.rwID_RWS) + ".rws";
+                    } else if (RWIDString == "rwID_RWS" || RWIDString == "rwpID_BODYDEF" || RWIDString == "rwaID_WAVEDICT") {
+                        if (RWIDString == "rwaID_WAVEDICT") {
+                            fileName = mainFileName + "_audio_" + to_string(fileType.rwID_RWS) + ".rws";
+                        } else {
+                            fileName = mainFileName + "_" + to_string(fileType.rwID_RWS) + ".rws";
+                        }
                         fileType.rwID_RWS += 1;
                     } else if (RWIDString == "rwID_WORLD") {
                         fileName = mainFileName + "_" + to_string(fileType.rwID_WORLD) + ".bsp";
@@ -199,22 +203,28 @@ int main(int argc, char** argv) {
                 delete[] FSBData;
                 break;
             } else {
-                if (RWStruct.ID == 1820) {
-                    cout << "Origins RenderWare Stream file attributes\n";
-                } else if (RWStruct.ID == 1796) {
-                    cout << "Climax special attributes?\n";
-                } else if (RWStruct.ID == 0) {
-                    cout << "Empty file\n";
-                }
-                fileData = new char[RWStruct.chunkSize];
-                memcpy(fileData, fullData+pos-12, RWStruct.chunkSize);
-                ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(fileType.Unknown) + ".bin", ios::out | ios::binary | ios::trunc);
-                fileType.Unknown += 1;
-                fileExt.write(fileData, RWStruct.chunkSize);
-                fileExt.close();
-                delete[] fileData;
+                if (fullFileSize > RWStruct.chunkSize) {
+                    if (RWStruct.ID == 1820) {
+                        cout << "Origins RenderWare Stream file attributes\n";
+                    } else if (RWStruct.ID == 1796) {
+                        cout << "Climax special attributes?\n";
+                    } else if (RWStruct.ID == 0) {
+                        cout << "Empty file\n";
+                        RWStruct.chunkSize += 12;
+                        pos -= 12;
+                    }
+                    fileData = new char[RWStruct.chunkSize];
+                    memcpy(fileData, fullData+pos, RWStruct.chunkSize);
+                    ofstream fileExt("./Extracted Data/" + mainFileName + "_" + to_string(fileType.Unknown) + ".bin", ios::out | ios::binary | ios::trunc);
+                    fileType.Unknown += 1;
+                    fileExt.write(fileData, RWStruct.chunkSize);
+                    fileExt.close();
+                    delete[] fileData;
 
-                pos += RWStruct.chunkSize;
+                    pos += RWStruct.chunkSize;
+                } else {
+                    pos = 192;
+                }
             }
         } while (pos < fullFileSize);
         
