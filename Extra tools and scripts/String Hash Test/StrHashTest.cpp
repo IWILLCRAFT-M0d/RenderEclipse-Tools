@@ -80,7 +80,7 @@ vector<vector<unsigned long>> readStrFile(string filePath) {
             text = "";
             StrFile.seekg(StrTable[i][1], ios::beg);
             StrFile.read(data, 2);
-            while (*(unsigned short*)&data[0] != 0) {
+            while (*(unsigned short*)&data[0] > 3) {
                 text += &data[0];
                 StrFile.read(data, 2);
             }

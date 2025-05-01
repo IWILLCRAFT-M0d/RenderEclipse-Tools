@@ -49,7 +49,7 @@ read next four values the many files detected in fileCount
 
 After reading all file data information in PS2 *.arc, two 4-bytes which are unknown their reason.
 ```
-### *.ARC - Silent Hill Shattered: Memories
+### *.ARC - Silent Hill: Shattered Memories
 Credits to AlphaTwentyThree and TPU from XeNTaX forums for documenting file format and hashing method.
 
 For some reason this is the only game that the file information table is not used, but instead it uses a file information table embed inside the main game executable.
@@ -80,7 +80,7 @@ The result will be 4131116712 (0xf63bd6a8)
 ## \.*XAML/\.*XML (UI) - Shattered Memories
 As per the official Microsoft documentation: ["XAML is a declarative markup language. As applied to the .NET programming model, XAML simplifies creating a UI for a .NET app."](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/xaml/?view=netdesktop-8.0)
 
-Both CLA and CUK Origins uses \*.XML for some of the interfaces, while Shattered Memories uses \*.XAML and some files uses \*.XML, but what makes it deserve a whole section is the obfuscation method. A further investigation will require to read game functionality, but that is far from my (IWILLCRAFT) knownledge.
+Both CLA and CUK Origins uses \*.XML for some of the interfaces, while Shattered Memories uses \*.XAML and some files uses \*.XML, but what makes it deserve a whole section is the obfuscation method. A further investigation will require to read game functionality.
 
 Side note: UI_Bootmenu.xml is a leftover from a debug level selector, this is know as this file is also present on Silent Hill: Origins (CUK) and thanks to a [gameplay of a prototype made by Borman (Past To Present Online/PtoPOnline) we can see it in action.](https://youtu.be/HMM1_-eVQhA?si=EgYEu4-muZHWUH8D)
 ```
@@ -105,9 +105,9 @@ As previously mention, Climax used RenderWare version 3.7.0.2 and it seem that m
 ## \*.snd/\*.mus (Audio) - Silent Hill: Shattered Memories
 Shattered Memories uses FMOD as per the official page describe it ["FMOD is an end-to-end solution for adding sound and music to any game. Build adaptive audio using the FMOD Studio and play it in-game using the FMOD Engine."](https://www.fmod.com/studio). Shattered Memories uses version 4. Wii is the console that takes more advantage from it as it uses reverb and has dynamic music which files can be found in data.arc labeled with the extension \*.mus, they are simply \*.xm files with a different file extension and a extra 72 bytes long header. In PSP and PS2 they only use static audios, most of them can be found in igc.arc with the extension \*.snd.
 
-The \*.snd can be extracted with both [FSBExt](https://github.com/gdawg/fsbext) and [vgsmtream](https://github.com/vgmstream/vgmstream). I reccomend use FSBExt as it fully extract all audio files with the incovenience that it extract them as \*.genh or \*.ss2 files, they can be reproduced from the page of vgsmtream and also coverted to \*.wav. However extract it requires to remove the header which is everything that comes before "FSB4" and rename the file to \*.fsb.
+The \*.snd files are mini-file containers, they contain an \*.fev and \*.fsb files. They can be extracted with DataSplitter.exe. \*.fsb files can be exported or reproduced with [FSBExt](https://github.com/gdawg/fsbext,) [vgsmtream](https://github.com/vgmstream/vgmstream) and [foobar2000](https://www.foobar2000.org/download) with the [vgmstream component for foobar2000.](https://github.com/vgmstream/vgmstream-releases/releases/download/nightly/foo_input_vgmstream.fb2k-component)
 
-The \*.mus files can be open with most players that supports \*.xm files (a convenient one being VLC), but the first 72 bytes of the file has to be deleted in other to play them.
+The \*.mus files can be open with audio players that supports \*.xm files (a convenient one being VLC), but the first 72 bytes of the file has to be deleted in other to play them.
 
 Side note: in case of extracting files with the Climax's Silent Hill Split RenderWare Resource BMS script, a file with the extension \*.fdp could get extracted. This files are actually \*.snd files, but with the extension of a project file for FMOD's tools.
 ## String Table

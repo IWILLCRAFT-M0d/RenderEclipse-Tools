@@ -28,25 +28,25 @@ For it usage open an \*.ARC file through the menubar. For now it only extract fi
 
 Sorry if the program lag this is my first time doing something like this...
 
-## <a href="./Extra tools and scripts/tex_SilentHillClimax.py">tex_SilentHillClimax.py</a>
+## <a href="./Extra tools and scripts/External Programs Scripts/tex_SilentHillClimax.py">tex_SilentHillClimax.py</a>
 This plugin for [Noesis](https://www.richwhitehouse.com/index.php?content=inc_projects.php&showproject=91) previews and extract textures from Climax's SH Games from all platforms, however this tool does not work properly under some textures PS2 and Wii textures that are less than 32 pixel of height and/or width.
 
 For it usage it is required to download this library (https://github.com/Zheneq/Noesis-Plugins/blob/master/lib_zq_nintendo_tex.py), and for extracting data you will need to create a folder named "textures" in the same folder you have the \*.txd file you are trying to open.
 
-## <a href="./Extra tools and scripts/DataSplitter.exe">DataSplitter</a>
+## <a href="./Extra tools and scripts/DataSplitter/DataSplitter.exe">DataSplitter</a>
 DataSplitter.exe is a CLI tool that splits RenderWare Stream and Silent Hill: Shattered Memories \*.snd files. For it usage drag and drop the proper file over the *.exe and it will start working.
 
 Silent Hill: Origins PS2 May 17, 2006 requires some modifications with an Hex editor as files contains 192 bytes of gibberish data at the beginning of each file.
 
-## <a href="./Extra tools and scripts/FBXFtest.exe">FBXFtest</a>
+## <a href="./Extra tools and scripts/FBXFtest/FBXFtest.exe">FBXFtest</a>
 FBXFtest.exe is a CLI barebones reader of the obfusctation method of \*.XML/\*.XAML files from Silent Hill: Shattered Memories. For it usage drag and drop the proper file over the \*.exe and it will start working.
 
-## <a href="./Extra tools and scripts/RETH.exe">RETH.exe</a>
+## <a href="./Extra tools and scripts/RETH/RETH.exe">RETH.exe</a>
 RETH.exe is a CLI tool made for detecting and adding values to a \*.RETH file (Silent Hill: Shattered Memories hashing table for RenderEclipse Tool).
 
 For it usage, make two \*.txt files in the same folder where the executable is, name the files as "Filenames.txt" and "ARCS.txt". In "Filenames.txt" put all names you want to check if they could or not be the name of the missing unhashed files. In "ARCS.txt" put the directory of your ARC file, in case of not creating this file the tool will add any name put in "Filenames.txt" without checking it.
 
-## <a href="./Extra tools and scripts/ClimaxSH_Unpack_Resource.bms">Fixed RenderWare Stream Quick BMS Script</a>
+## <a href="./Extra tools and scripts/External Programs Scripts/ClimaxSH_Unpack_Resource.bms">Fixed RenderWare Stream Quick BMS Script</a>
 This script is a adjusted version from [this script](https://github.com/leeao/SilentHillOriginsPS2/blob/main/fmt_SilentHillOrigins_PS2_Unpack_Resource.bms), it comes with the benefit of properly extract Wii's Silent Hill: Shattered Memories RenderWare Stream files.
 
 # External tools and scripts
