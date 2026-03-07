@@ -1,0 +1,138 @@
+//------------------------------------------------
+//--- 010 Editor v15.0 Binary Template
+//
+//      File: *.IGCStream (Silent Hill: Shattered Memories)
+//   Authors: IWILLCRAFT
+//------------------------------------------------
+
+
+struct stringRead {
+    uint16 strLen;
+    if (strLen > 0) {
+        char str[strLen];
+    }
+};
+
+string templateName(stringRead &s) {
+    if(s.strLen > 0)
+        return s.str;
+    else
+        return "(empty string)";
+} 
+
+struct headerCommandsInformation {
+    uint16      data_unk_0;
+    stringRead  command <name=templateName>;
+    uint16      data_unk_1;
+};
+
+struct headerAudioInformation {
+    uint32  data_unk_0; // this value is between 0 and 2, if it is 1 then it grabs other 16 bytes
+    uint16  data_unk_1;
+    
+    if (data_unk_0 == 1) {
+        uint32  data_unk_2;
+        uint32  data_unk_3;
+        uint16  data_unk_4 <format=hex>;
+        uint16  data_unk_5;
+        uint16  data_unk_6;
+        uint16  data_unk_7;
+    }
+    
+    stringRead  fileName <name=templateName>;
+    uint8       padding_0[4];
+    uint16      data_unk_4 <format=hex>; //ID type?
+    uint16      data_unk_5;
+    uint16      data_unk_6;
+    uint16      FEVdataSize;
+    uint8       FEVdata[FEVdataSize];
+};
+
+struct headerAnimInformation {
+    uint32  data_unk_0; // this value is between 0 and 2, if it is 1 then it grabs other 16 bytes
+    uint16  data_unk_1;
+    
+    if (data_unk_0 == 1) {
+        uint32  data_unk_2;
+        uint32  data_unk_3;
+        uint16  data_unk_4 <format=hex>;
+        uint16  data_unk_5;
+        uint16  data_unk_6;
+        uint16  data_unk_7;
+    }
+    
+    if (data_unk_0 != 0) {
+        stringRead  anim_object <name=templateName>;
+        stringRead  anim_file <name=templateName>;
+        stringRead  anim_facial <name=templateName>;
+        uint16      data_unk_8;
+        stringRead  command_0 <name=templateName>;
+        stringRead  command_1 <name=templateName>;
+    } else {
+        stringRead  anim_file <name=templateName>;
+        stringRead  unk_string_0;
+        uint8       padding_0[5];
+    }
+};
+
+struct headerDataUnk0 {
+    float   data_unk_0;
+    float   data_unk_1;
+    uint16  data_unk_2;
+};
+
+void headerDataFileInfo(uint16 func_arg0, int16 func_arg1) {
+    local uint32 i;
+    for (i = 0; i < func_arg0; i++) {
+        if (func_arg1 == 0 || i < func_arg1) {
+            headerAnimInformation headerAnimInfo;
+        } else {
+            uint16 data_unk_0 <hidden=true>;
+            FSeek(FTell() - 2);
+            if (data_unk_0 != 4) {
+                headerAudioInformation headerAudioInfo;
+            } else {
+                headerCommandsInformation headerComInfo;
+            }
+        }
+    }
+};
+
+struct IGCStream {
+    uint32  headerSize;
+    uint32  dataSize;
+    
+    
+    float  headerData_unk_0; // this is a float - cutscene duration???
+    uint16  headerData_unk_1; // object amount
+    uint16  headerData_unk_2; // animation amount - if 0 all objects are animations
+    
+    
+    local uint32 i;
+    for (i = 0; i < headerData_unk_1; i++) {
+        headerDataUnk0 headerData;
+    }
+    
+    headerDataFileInfo(headerData_unk_1, headerData_unk_2);
+    
+    FSeek(headerSize);
+    //uint8 data[dataSize];
+    for (i = 0; true; i++) {
+        struct sfilesData {
+            uint16 fileSector_ID <format=hex>;
+            uint16 fileSector_Size;
+            uint8 data[fileSector_Size / 2];
+        } filesData;
+        
+        //struct sfilesData {
+        //    BigEndian();
+        //    uint16 fileSector_Size;
+        //    uint16 fileSector_ID <format=hex>;
+        //    uint8 data[fileSector_Size / 2];
+        //} filesData;
+        //LittleEndian();
+        if (filesData[i].fileSector_Size == 0) {break;}
+    }
+};
+
+IGCStream InGameCutscenesStream;

@@ -1,0 +1,38 @@
+//------------------------------------------------
+//--- 010 Editor v15.0 Binary Template
+//
+//      File: *.snd Files (Silent Hill: Shattered Memories)
+//   Authors: IWILLCRAFT
+//------------------------------------------------
+
+
+struct SND {
+    uint32  fileSignature;
+    uint32  dataSize;
+    uint32  unk_data_0;
+    uint32  unk_data_1;
+    uint32  unk_data_2;
+    
+    
+    char    filename[64];
+    
+    struct FEVDataDef {
+        uint32  FEVFileSize;
+        uint32  FEVFilePos;
+        char    FEVname[64];
+    } FEV_Data_Defs;
+
+    struct FSBDataDef {
+        uint32  FSBFileSize;
+        uint32  FSBFilePos;
+        char    FSBname[64];
+    } FSB_Data_Defs;
+    
+    FSeek(FEV_Data_Defs.FEVFilePos + 20);
+    uint8   FEVData[FEV_Data_Defs.FEVFileSize];
+    FSeek(FSB_Data_Defs.FSBFilePos + 20);
+    uint8   FSBData[FSB_Data_Defs.FSBFileSize];
+};
+
+
+SND Sound;
