@@ -1,0 +1,3 @@
+*.exe
+src/build/*
+git_update.bat

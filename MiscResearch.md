@@ -1,5 +1,4 @@
-Interesting or curious information unrelated to file formats.
-
+Research beyond file formats like cheats or information that can't be covered on The Cutting Room Floor.
 
 # Codes
 Addresses in the game executable made as codes for emulators. PSP codes are intented to be added as CWCheat codes, the same with PS2 codes, but as \*.pnach and Wii codes are intented to be added as Gecko Codes.

@@ -1,0 +1,1 @@
+Files are meant to be compiled with GCC using `MSYS2` packages.

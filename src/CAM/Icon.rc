@@ -1,0 +1,2 @@
+PROGRAM_ICON ICON "sprog.ico"
+#include <wx/msw/wx.rc>

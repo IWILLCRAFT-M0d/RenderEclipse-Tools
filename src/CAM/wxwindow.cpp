@@ -252,8 +252,8 @@ void MainFrame::menuBarClose(wxCommandEvent& evt) {
 
 void MainFrame::menuBarCredits(wxCommandEvent& evt) {
     wxAboutDialogInfo aboutInfo;
-    aboutInfo.SetName("RenderEclipse Tools");
-    aboutInfo.SetVersion("V2");
+    aboutInfo.SetName("Climax ARC Manager");
+    aboutInfo.SetVersion("V2.1");
     aboutInfo.SetDescription(_("A modding tool for Climax's Silent Hill games"));
     aboutInfo.SetWebSite("https://github.com/IWILLCRAFT-M0d/RenderEclipse-Tools");
     aboutInfo.AddDeveloper("IWILLCRAFT (Creator)");
