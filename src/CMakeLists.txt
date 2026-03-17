@@ -5,19 +5,21 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Projects
-project(dataSplitter CXX)
-project(dataSplitter-IGCStream CXX)
-project(FBFX-Test CXX)
-project(RETH CXX)
-project(STR-HASH-test CXX)
-project(CAM CXX)
+project(dataSplitter LANGUAGES CXX VERSION 0.3)
+project(dataSplitter-IGCStream LANGUAGES CXX VERSION 0.1)
+project(FBFX-Test LANGUAGES CXX VERSION 0.2)
+project(RETH LANGUAGES CXX VERSION 0.2)
+project(STR-HASH-test LANGUAGES CXX VERSION 0.1)
+project(CAM LANGUAGES CXX VERSION 2.1)
 
 # Flags
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-Wall -O2 -static-libgcc -static-libstdc++ -static")
 set(CMAKE_CXX_FLAGS_RELEASE "-g0")
+set(CMAKE_CXX_FLAGS_DEBUG "-g2 -DDEBUG -DDEBOOG")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s")
+
 set(BUILD_SHARED_LIBS OFF)
 set(BUILD_STATIC_LIBS ON)
 
@@ -66,7 +68,6 @@ FetchContent_MakeAvailable(zlib-cmake)
 add_executable(CAM
     CAM/main.cpp
     CAM/ARC.cpp
-    CAM/reth.cpp
     CAM/fileLoader.cpp
     CAM/wxwindow.cpp
     CAM/Icon.rc

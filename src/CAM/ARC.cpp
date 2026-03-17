@@ -5,17 +5,92 @@
 #include <stdio.h>
 #include <cstdio>
 #include <wx/wx.h>
+#include <wx/utils.h>
 
 #include "ARC.h"
-#include "reth.h"
+#include "wxwindow.h"
 #include <zlib.h>
 
 
 using namespace std;
-using namespace std::filesystem;
-unsigned int ARC::ARCType;
-bool ARC::compressImport;
-classValuesARC valuesARC;
+static bool compressImport;
+
+/** @brief RETH (RenderEclipse Tools Hashes) file type
+ * ye I did my own file type just bc I want to try to make one by myself
+ * although is kinda useless and probably I should have go with just making
+ * a whole txt list with real names and then make a process to test if any
+ * hash pairs with a converted to hash name with SHSM_FilenameHash
+ * 
+ * Credits to:
+ * - PatrickHamster (XeNTaX Discord) giving me a guide to manage hashes.
+ * - SPECIAL THANKS to TPU (XeNTaX page [R.I.P]) as they discovered the hashing
+ * method that without it I wouldn't have even tried to make this tool.
+ */
+
+unsigned long ARC::SHSM_FilenameHash(string text) {
+    unsigned long hash = 0; text += "";
+    for (int i = 0; text[i] != '\0'; i++) {
+        hash = (hash * 33) ^ tolower(text[i]);
+    }
+    return hash;
+}
+
+void ARC::readFilenames(string filePath) {
+    ifstream file(filePath.c_str(), ios::in | ios_base::binary);
+
+    RETH::header reth_header;
+    RETH::hashes reth_hash;
+    ARC::header  arc_header;
+
+    std::string   fileName;
+    unsigned long stringSize;
+    
+    if (ARC::loadedARC_Info.fileNames.size() != 0) {
+        ARC::loadedARC_Info.fileNames.clear();
+    }
+
+    switch (ARC::loadedARC_Info.type) {
+    case ARC::type_SM:
+        file.read((char*)&reth_header, sizeof(reth_header));
+        if (reth_header.header != RETH_SIGNATURE) {
+            wxLogStatus("Not a RETH file!");
+            ARC::loadedARC_Info.fileNames = {};
+            break;
+        }
+        for (unsigned long i = 0; i < reth_header.hashesCount; i++) {
+            file.read((char*)&reth_hash, 6);
+            fileName.resize(reth_hash.stringSize);
+            file.read((char*)&fileName[0], reth_hash.stringSize);
+            ARC::loadedARC_Info.fileNames.push_back({reth_hash.hash, fileName});
+            fileName.clear();
+        }
+        break;
+    case ARC::type_Solent:
+        file.seekg(4, ios::beg);
+    case ARC::type_LA:
+        file.read((char*)&arc_header, 16);
+        file.seekg(arc_header.namesPos, ios::beg);
+        for (unsigned long i = 0; i < arc_header.fileCount; i++) {
+            if (i != 0 && i != arc_header.fileCount - 1) {
+                stringSize = ARC::loadedARC_Info.fileData[i + 1].fileName - ARC::loadedARC_Info.fileData[i].fileName - 1;
+            }
+            else if (i == arc_header.fileCount - 1) {
+                stringSize = arc_header.namesSize - ARC::loadedARC_Info.fileData[i].fileName - 1;
+            }
+            else {
+                stringSize = ARC::loadedARC_Info.fileData[i + 1].fileName - 1;
+            }
+            fileName.resize(stringSize);
+            file.read((char*)&fileName[0], stringSize);
+            file.seekg(1, ios::cur);
+            ARC::loadedARC_Info.fileNames.push_back({0, fileName});
+            fileName.clear();
+        }
+        break;
+    }
+    file.close();
+    return;
+}
 
 string ARC::endianChangeString(unsigned long ELittleToEBig) {
     ostringstream tempString0;
@@ -37,10 +112,100 @@ unsigned long ARC::endianChangeULong(string EBigToELittle) {
     | ((tempLong >> 8) & 0xff00) | ((tempLong >> 24) & 0xff));
 }
 
-void ARC::importFunc(string fileImportPath) {
-    string oldARCPath = valuesARC.pathFileLoaded + ".bk";
+/**@brief Main ARC managment handlers. */
+
+void ARC::exportFile(bool exportAllFiles) {
+    char *rawData, *unCompData;
+    bool nameFound = false, rethEmpty = false;
+    unsigned long filename_hash_SHSM, unHashedStringFileName2Int, i, j;
+    string extractPath, fileName = ARC::loadedARC_Info.fileItemSelected.ToStdString();
+    
+    if (exportAllFiles == true) {
+        extractPath = "./" + std::filesystem::path(ARC::loadedARC_Info.pathFileLoaded).stem().string();
+        if (!std::filesystem::is_directory(extractPath) || !std::filesystem::exists(extractPath)) { std::filesystem::create_directory(extractPath); }
+    } else if (ARC_IsType(ARC::type_SM)) {
+        unHashedStringFileName2Int = ARC::endianChangeULong(fileName);
+        filename_hash_SHSM = ARC::SHSM_FilenameHash(fileName);
+    }
+    if (ARC::loadedARC_Info.fileNames.size() == 0) { rethEmpty = true; }
+
+    ifstream ARC(ARC::loadedARC_Info.pathFileLoaded, ios::in | ios_base::binary);
+    
+    if (exportAllFiles == false && fileName != "") {
+        ofstream fileExtOne("./" + fileName, ios::out | ios::binary | ios::trunc);
+        for (i = 0; i < ARC::loadedARC_Info.fileData.size(); i++) {
+            if (ARC::loadedARC_Info.type == ARC::type_SM) {
+                if (unHashedStringFileName2Int == ARC::loadedARC_Info.fileData[i].fileName) {
+                    fileName += ".dat";
+                    nameFound = true;
+                } else if (filename_hash_SHSM == ARC::loadedARC_Info.fileData[i].fileName) {
+                    nameFound = true;
+                }
+            } else if (fileName == ARC::loadedARC_Info.fileNames[i].filename) {
+                nameFound = true;
+            }
+            
+            if (nameFound) {
+                rawData = new char[ARC::loadedARC_Info.fileData[i].dataSize];
+                ARC.seekg(ARC::loadedARC_Info.fileData[i].dataPos, ios::beg);
+                ARC.read(rawData, ARC::loadedARC_Info.fileData[i].dataSize);
+                if (ARC::loadedARC_Info.fileData[i].dataSizeReal > 0) {
+                    unCompData = new char[ARC::loadedARC_Info.fileData[i].dataSizeReal];
+                    uncompress((Bytef*)unCompData, &ARC::loadedARC_Info.fileData[i].dataSizeReal, (Bytef*)rawData, ARC::loadedARC_Info.fileData[i].dataSize);
+                    fileExtOne.write((char*)&unCompData[0], ARC::loadedARC_Info.fileData[i].dataSizeReal);
+                    delete[] unCompData;
+                } else {
+                    fileExtOne.write((char*)&rawData[0], ARC::loadedARC_Info.fileData[i].dataSize);
+                }
+                delete[] rawData;
+                fileExtOne.close();
+                break;
+            }
+        }
+    } else if (exportAllFiles == true) {
+        for (i = 0; i < ARC::loadedARC_Info.fileData.size(); i++) {
+            nameFound = false;
+            if (ARC_IsNotType(ARC::type_SM)) {
+                fileName = "/" + ARC::loadedARC_Info.fileNames[i].filename;
+                nameFound = true;
+            } else if (!rethEmpty) {
+                for (j = 0; j < ARC::loadedARC_Info.fileNames.size(); j++) {
+                    if (ARC::loadedARC_Info.fileData[i].fileName == ARC::loadedARC_Info.fileNames[j].hash) {
+                        fileName = "/" + ARC::loadedARC_Info.fileNames[j].filename;
+                        nameFound = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!nameFound) {
+                fileName = "/Unknown Names/" + ARC::endianChangeString(ARC::loadedARC_Info.fileData[i].fileName) + ".dat";
+                if (!std::filesystem::is_directory(extractPath + "/Unknown Names") || !std::filesystem::exists(extractPath + "/Unknown Names")) {
+                    std::filesystem::create_directory(extractPath + "/Unknown Names");
+                }
+            }
+            ofstream fileExt(extractPath + fileName, ios::out | ios::binary | ios::trunc);
+            rawData = new char[ARC::loadedARC_Info.fileData[i].dataSize];
+            ARC.seekg(ARC::loadedARC_Info.fileData[i].dataPos, ios::beg);
+            ARC.read(rawData, ARC::loadedARC_Info.fileData[i].dataSize);
+            if (ARC::loadedARC_Info.fileData[i].dataSizeReal > 0) {
+                unCompData = new char[ARC::loadedARC_Info.fileData[i].dataSizeReal];
+                uncompress((Bytef*)unCompData, &ARC::loadedARC_Info.fileData[i].dataSizeReal, (Bytef*)rawData, ARC::loadedARC_Info.fileData[i].dataSize);
+                fileExt.write((char*)&unCompData[0], ARC::loadedARC_Info.fileData[i].dataSizeReal);
+                delete[] unCompData;
+            } else {
+                fileExt.write((char*)&rawData[0], ARC::loadedARC_Info.fileData[i].dataSize);
+            }
+            delete[] rawData;
+            fileExt.close();
+        }
+    }
+};
+
+void ARC::importFile(string fileImportPath) {
+    string oldARCPath = ARC::loadedARC_Info.pathFileLoaded + ".bk";
     std::remove(oldARCPath.c_str());
-    std::rename(valuesARC.pathFileLoaded.c_str(), oldARCPath.c_str());
+    std::rename(ARC::loadedARC_Info.pathFileLoaded.c_str(), oldARCPath.c_str());
     ifstream fileImport(fileImportPath, ios_base::binary | ios::ate| ios::in);
     ifstream oldARC(oldARCPath, ios_base::binary | ios::in);
 
@@ -61,20 +226,20 @@ void ARC::importFunc(string fileImportPath) {
     Get some of the headers values
     */
 
-    string fileName = valuesARC.fileItemSelected.ToStdString();
+    string fileName = ARC::loadedARC_Info.fileItemSelected.ToStdString();
     unsigned long unHashedStringFileName2Int = ARC::endianChangeULong(fileName);
-    unsigned long hashedStringFileName2Int = RETH::SHSMWord2Hash(fileName);
+    unsigned long hashedStringFileName2Int = ARC::SHSM_FilenameHash(fileName);
     unsigned long fileCount, dataStartPos, fileImportIndex, fileNamesPos;
     
     
-    switch (ARC::ARCType) {
-        case 1:
+    switch (ARC::loadedARC_Info.type) {
+        case ARC::type_SM:
             //Shattered Memories - 10FA0000
             oldARC.seekg(4, ios::beg);
             oldARC.read((char*)&fileCount, 4);
             oldARC.seekg(8, ios::beg);
             oldARC.read((char*)&dataStartPos, 4);
-        case 2:
+        case ARC::type_Solent:
             //Origins UK - 41322E30 (A2.0)
             oldARC.seekg(4, ios::beg);
             oldARC.read((char*)&fileCount, 4);
@@ -83,7 +248,7 @@ void ARC::importFunc(string fileImportPath) {
             oldARC.seekg(12, ios::beg);
             oldARC.read((char*)&fileNamesPos, 4);
             break;
-        default:
+        case ARC::type_LA:
             //Origins LA
             oldARC.read((char*)&fileCount, 4);
             oldARC.seekg(4, ios::beg);
@@ -94,17 +259,15 @@ void ARC::importFunc(string fileImportPath) {
     }
 
 
-
-
     // Find the index of the selected file to import
-    for (unsigned long i = 0; i < valuesARC.ARCdata.size(); i++) {
-        if (ARC::ARCType == 1) {
-            if (unHashedStringFileName2Int == valuesARC.ARCdata[i][0]
-            || hashedStringFileName2Int == valuesARC.ARCdata[i][0]) {
+    for (unsigned long i = 0; i < ARC::loadedARC_Info.fileData.size(); i++) {
+        if (ARC::loadedARC_Info.type == ARC::type_SM) {
+            if (unHashedStringFileName2Int == ARC::loadedARC_Info.fileData[i].fileName
+            || hashedStringFileName2Int == ARC::loadedARC_Info.fileData[i].fileName) {
                 fileImportIndex = i;
                 break;
             }
-        } else if (fileName == valuesARC.RETH[i].second) {
+        } else if (fileName == ARC::loadedARC_Info.fileNames[i].filename) {
             fileImportIndex = i;
             break;
         }
@@ -115,28 +278,28 @@ void ARC::importFunc(string fileImportPath) {
     // from CLA's Origins or the user clicks no then it's doesn't compress it
     // CLA's Origins doesn't seems to support ZLib as the debug symbols of the
     // May 2006 proto doesn't mention ZLib anywhere
-    wxMessageDialog* compressBox;
-    if (ARC::ARCType != 3) {
+    if (ARC::loadedARC_Info.type != ARC::type_LA) {
         signed long checkCompressImport = wxID_NO;
-        if (valuesARC.ARCdata[fileImportIndex][3] == 0) {
-            compressBox = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was not compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
+        if (ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal == 0) {
+            mainWin->errorMessage = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was not compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
         } else {
-            compressBox = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
+            mainWin->errorMessage = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
         }
-        checkCompressImport = compressBox->ShowModal();
+        checkCompressImport = mainWin->errorMessage->ShowModal();
         switch (checkCompressImport) {
             case wxID_YES:
-                ARC::compressImport = true;
+                compressImport = true;
                 break;
             default:
-                ARC::compressImport = false;
+                compressImport = false;
                 break;
         };
+        delete mainWin->errorMessage;
     }
     
 
     // Step one: regenerate the ARC until the data start
-    fstream newARC(valuesARC.pathFileLoaded, ios::binary | ios::in | ios::out | ios::trunc);
+    fstream newARC(ARC::loadedARC_Info.pathFileLoaded, ios::binary | ios::in | ios::out | ios::trunc);
     signed long readableData = dataStartPos, dataReadPos = 0, bufferSize = 8192;
     char *rawData, *compressedData;
     bool endfile = false;
@@ -165,7 +328,7 @@ void ARC::importFunc(string fileImportPath) {
     oldARC.seekg(0, ios::end);
     unsigned long headerSkip = 16, compressedSize = 0, importRealFileSize = fileImport.tellg(),
     importFileSpace = 0, oldARCSize = oldARC.tellg(); // originalAddress is for step four
-    if (ARC::ARCType == 2) {headerSkip = 20;}
+    if (ARC::loadedARC_Info.type == ARC::type_Solent) {headerSkip = 20;}
 
 
     fileImport.seekg(0, ios::beg);
@@ -175,30 +338,30 @@ void ARC::importFunc(string fileImportPath) {
     // This calculate space to reserved for each file in the ARC
     // TODO: research the CLA's Origins betas as some of this seems
     // To be using a space minimun of 16 bytes while other 32
-    if (ARC::ARCType == 3 || ARC::compressImport == false) {
+    if (ARC::loadedARC_Info.type == ARC::type_LA || compressImport == false) {
         //Don't compress
 
         //Calculate space to grab
-        switch (ARC::ARCType) {
-            case 1:
+        switch (ARC::loadedARC_Info.type) {
+            case ARC::type_SM:
                 while (importRealFileSize > importFileSpace) {
                     importFileSpace += 2048;
                 }
                 break;
-            case 2:
+            case ARC::type_Solent:
                 while (importRealFileSize > importFileSpace) {
                     importFileSpace += 32;
                 }
                 break;
-            case 3:
+            case ARC::type_LA:
                 while (importRealFileSize > importFileSpace) {
                     importFileSpace += 32;
                 }
                 break;
         }
 
-        valuesARC.ARCdata[fileImportIndex][2] = importRealFileSize;
-        valuesARC.ARCdata[fileImportIndex][3] = 0;
+        ARC::loadedARC_Info.fileData[fileImportIndex].dataSize = importRealFileSize;
+        ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal = 0;
     } else {
         //Compress
         rawData = new char[importRealFileSize];
@@ -210,24 +373,24 @@ void ARC::importFunc(string fileImportPath) {
     
         compress2((Bytef*)compressedData, &compressedSize, (Bytef*)rawData, importRealFileSize, 9);
         delete[] rawData;
-        switch (ARC::ARCType) {
-            case 1:
+        switch (ARC::loadedARC_Info.type) {
+            case ARC::type_SM:
                 while (compressedSize > importFileSpace) {
                     importFileSpace += 2048;
                 }
                 break;
-            case 2:
+            case ARC::type_Solent:
                 while (compressedSize > importFileSpace) {
                     importFileSpace += 32;
                 }
                 break;
         }
 
-        valuesARC.ARCdata[fileImportIndex][2] = compressedSize;
-        valuesARC.ARCdata[fileImportIndex][3] = importRealFileSize;
+        ARC::loadedARC_Info.fileData[fileImportIndex].dataSize = compressedSize;
+        ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal = importRealFileSize;
     }
-    newARC.write((char*)&valuesARC.ARCdata[fileImportIndex][2], 4);
-    newARC.write((char*)&valuesARC.ARCdata[fileImportIndex][3], 4);
+    newARC.write((char*)&ARC::loadedARC_Info.fileData[fileImportIndex].dataSize, 4);
+    newARC.write((char*)&ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal, 4);
 
 
 
@@ -236,9 +399,9 @@ void ARC::importFunc(string fileImportPath) {
     // being imported
     signed long temp = 0, temp1, temp2;
 
-    if (fileImportIndex != valuesARC.ARCdata.size() - 1) {
-        temp1 = valuesARC.ARCdata[fileImportIndex+1][1];
-    } else if (ARC::ARCType == 1) {
+    if (fileImportIndex != ARC::loadedARC_Info.fileData.size() - 1) {
+        temp1 = ARC::loadedARC_Info.fileData[fileImportIndex+1].fileName;
+    } else if (ARC::loadedARC_Info.type == ARC::type_LA) {
         temp1 = oldARCSize;
     } else {
         temp1 = fileNamesPos;
@@ -246,34 +409,32 @@ void ARC::importFunc(string fileImportPath) {
 
 
 
-    if (importFileSpace < (temp1 - valuesARC.ARCdata[fileImportIndex][1])) {
-        temp =  -((temp1 - valuesARC.ARCdata[fileImportIndex][1]) - importFileSpace);
+    if (importFileSpace < (temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName)) {
+        temp =  -((temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName) - importFileSpace);
     } else {
-        temp = importFileSpace - (temp1 - valuesARC.ARCdata[fileImportIndex][1]);
+        temp = importFileSpace - (temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName);
     }
 
     for (unsigned long i = fileImportIndex+1; fileCount > i; i++) {
         newARC.seekg(headerSkip + (i * 16) + 4, ios::beg);
-        valuesARC.ARCdata[i][1] += temp;
-        if (ARC::ARCType != 3) {
-            temp2 = valuesARC.ARCdata[i][1];
+        ARC::loadedARC_Info.fileData[i].fileName += temp;
+        if (ARC::loadedARC_Info.type != ARC::type_LA) {
+            temp2 = ARC::loadedARC_Info.fileData[i].fileName;
         } else {
-            temp2 = valuesARC.ARCdata[i][1] - dataStartPos;
+            temp2 = ARC::loadedARC_Info.fileData[i].fileName - dataStartPos;
         }
         newARC.write((char*)&temp2, 4);
     }
 
 
-    if (ARC::ARCType != 1) {
+    if (ARC::loadedARC_Info.type != ARC::type_SM) {
         fileNamesPos += temp;
         newARC.seekg(headerSkip - 8, ios::beg);
         newARC.write((char*)&fileNamesPos, 4);
     }
 
-
-
     // Third Step: regenerate the file until the part where the new data is inserted
-    readableData = valuesARC.ARCdata[fileImportIndex][1] - dataStartPos;
+    readableData = ARC::loadedARC_Info.fileData[fileImportIndex].dataPos - dataStartPos;
     dataReadPos = dataStartPos;
     endfile = false;
     newARC.seekg(dataReadPos, ios::beg);
@@ -298,8 +459,8 @@ void ARC::importFunc(string fileImportPath) {
 
 
     // Fourth step: add new data
-    newARC.seekg(valuesARC.ARCdata[fileImportIndex][1], ios::beg);
-    if (ARC::ARCType == 3 || ARC::compressImport == false) {
+    newARC.seekg(ARC::loadedARC_Info.fileData[fileImportIndex].dataPos, ios::beg);
+    if (ARC::loadedARC_Info.type == ARC::type_LA || compressImport == false) {
         // The file is NOT being compressed
         readableData = importRealFileSize;
         dataReadPos = 0;
@@ -369,146 +530,63 @@ void ARC::importFunc(string fileImportPath) {
     std::remove(oldARCPath.c_str());
 };
 
-
-void ARC::extractFunc(bool All) {
-    char *rawData, *unCompData;
-    bool nameFinded, rethEmpty = false;
-    unsigned long hashedStringFileName2Int, unHashedStringFileName2Int;
-    string extractPath, fileName = valuesARC.fileItemSelected.ToStdString();
-    
-    if (All == true) {
-        extractPath = "./" + path(valuesARC.pathFileLoaded).stem().string();
-        if (!is_directory(extractPath) || !exists(extractPath)) { create_directory(extractPath); }
-    } else {
-        unHashedStringFileName2Int = ARC::endianChangeULong(fileName);
-        hashedStringFileName2Int = RETH::SHSMWord2Hash(valuesARC.fileItemSelected.ToStdString());
-    }
-    if (valuesARC.RETH.size() == 0) { rethEmpty = true; }
-    ifstream ARC(valuesARC.pathFileLoaded, ios::in | ios_base::binary);
-
-    for (unsigned long i = 0; i < valuesARC.ARCdata.size(); i++) {
-        nameFinded = false;
-        if (All == false) {
-            ofstream fileExt("./" + fileName, ios::out | ios::binary | ios::trunc);
-            if (ARC::ARCType == 1) {
-                if (unHashedStringFileName2Int == valuesARC.ARCdata[i][0]) {
-                    fileName += ".dat";
-                    nameFinded = true;
-                } else if (hashedStringFileName2Int == valuesARC.ARCdata[i][0]) {
-                    nameFinded = true;
-                }
-            } else if (fileName == valuesARC.RETH[i].second) {
-                nameFinded = true;
-            }
-
-            if (nameFinded) {
-                rawData = new char[valuesARC.ARCdata[i][2]];
-                ARC.seekg(valuesARC.ARCdata[i][1], ios::beg);
-                ARC.read(rawData, valuesARC.ARCdata[i][2]);
-                if (valuesARC.ARCdata[i][3] > 0) {
-                    unCompData = new char[valuesARC.ARCdata[i][3]];
-                    uncompress((Bytef*)unCompData, &valuesARC.ARCdata[i][3], (Bytef*)rawData, valuesARC.ARCdata[i][2]);
-                    fileExt.write((char*)&unCompData[0], valuesARC.ARCdata[i][3]);
-                    delete[] unCompData;
-                } else {
-                    fileExt.write((char*)&rawData[0], valuesARC.ARCdata[i][2]);
-                }
-                delete[] rawData;
-                fileExt.close();
-                break;
-            }
-        } else {
-            if (ARC::ARCType != 1) {
-                fileName = "/" + valuesARC.RETH[i].second;
-                nameFinded = true;
-            } else if (!rethEmpty) {
-                for (unsigned long j = 0; j < valuesARC.RETH.size(); j++) {
-                    if (valuesARC.ARCdata[i][0] == valuesARC.RETH[j].first) {
-                        fileName = "/" + valuesARC.RETH[j].second;
-                        nameFinded = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!nameFinded) {
-                fileName = "/Unknown Names/" + ARC::endianChangeString(valuesARC.ARCdata[i][0]) + ".dat";
-                if (!is_directory(extractPath + "/Unknown Names") || !exists(extractPath + "/Unknown Names")) {
-                    create_directory(extractPath + "/Unknown Names");
-                }
-            }
-            ofstream fileExt(extractPath + fileName, ios::out | ios::binary | ios::trunc);
-            rawData = new char[valuesARC.ARCdata[i][2]];
-            ARC.seekg(valuesARC.ARCdata[i][1], ios::beg);
-            ARC.read(rawData, valuesARC.ARCdata[i][2]);
-            if (valuesARC.ARCdata[i][3] > 0) {
-                unCompData = new char[valuesARC.ARCdata[i][3]];
-                uncompress((Bytef*)unCompData, &valuesARC.ARCdata[i][3], (Bytef*)rawData, valuesARC.ARCdata[i][2]);
-                fileExt.write((char*)&unCompData[0], valuesARC.ARCdata[i][3]);
-                delete[] unCompData;
-            } else {
-                fileExt.write((char*)&rawData[0], valuesARC.ARCdata[i][2]);
-            }
-            delete[] rawData;
-            fileExt.close();
-        }
-    }
-};
-
-
-//TODO: make a verifier for the third case so users doesn't try to load
-//ARC files from other games like PC Silent Hill 3
-vector<vector<unsigned long>> ARC::readARC(string filePath) {
-    ifstream ARC(filePath.c_str(), ios::in | ios_base::binary);
+bool ARC::read(void) {
+    unsigned long fileSignature, fileSize, i;
+    ARC::header ARC_header;
+    ifstream ARC(ARC::loadedARC_Info.pathFileLoaded, ios::in | ios_base::binary);
+    ARC.seekg(0, std::ios::end); fileSize = ARC.tellg(); ARC.seekg(0, std::ios::beg);
     if (!ARC.is_open()) {
-        printf("Missing file ARC!\n");
-        return {};
+        wxLogStatus("Missing file ARC!\n");
+        return false;
     }
-    unsigned long fileSignature;
-    unsigned long fileCount;
+    if (ARC::loadedARC_Info.fileData.size() != 0) {
+        ARC::loadedARC_Info.fileData.clear();
+    }
+
     ARC.read((char*)&fileSignature, 4);
-    vector<vector<unsigned long>> vecFiles;
-    struct ARCFiles {
-        unsigned long fileName;
-        unsigned long dataPos;
-        unsigned long dataSize;
-        unsigned long dataSizeReal;
-    } ARCFilesRead;
+    ARC::fileEntryInfo ARC_FileEntryData;
     
     switch (fileSignature) {
-        case 64016:
+        case ARC_SIGNATURE_SHSM:
             //Shattered Memories - 10FA0000
-            ARC::ARCType = 1;
-            ARC.read((char*)&fileCount, 4);
-            ARC.seekg(16, ios::beg);
+            ARC::loadedARC_Info.type = ARC::type_SM;
             break;
-        case 808333889:
+        case ARC_SIGNATURE_SOLENT:
             //Origins UK - 41322E30 (A2.0)
-            ARC::ARCType = 2;
-            ARC.read((char*)&fileCount, 4);
-            ARC.seekg(20, ios::beg);
+            ARC::loadedARC_Info.type = ARC::type_Solent;
             break;
         default:
             //Origins LA
-            ARC::ARCType = 3;
-            fileCount = fileSignature;
-            ARC.seekg(4, ios::beg);
-            ARC.read((char*)&fileSignature, 4);
-            ARC.seekg(16, ios::beg);
+            ARC.seekg(0, std::ios::beg);
+            ARC::loadedARC_Info.type = ARC::type_LA;
             break;
     }
-
-    for (unsigned long i = 0; i < fileCount; i++) {
-        ARC.read((char*)&ARCFilesRead, 16);
-        vecFiles.push_back(vector<unsigned long>());
-        vecFiles[i].push_back(ARCFilesRead.fileName);
-        if (ARC::ARCType == 3) {
-            vecFiles[i].push_back(ARCFilesRead.dataPos + fileSignature);
-        } else {
-            vecFiles[i].push_back(ARCFilesRead.dataPos);
-        }
-        vecFiles[i].push_back(ARCFilesRead.dataSize);
-        vecFiles[i].push_back(ARCFilesRead.dataSizeReal);
+    ARC.read((char*)&ARC_header, sizeof(ARC::header));
+    if (ARC_IsType(ARC::type_SM)) { ARC.seekg(16, std::ios::beg); }
+    
+    // File check to avoid someone crashing their PC opening ARC files from a completely different game.
+    if (ARC_header.fileCount * 16 > fileSize ||
+        (ARC_IsType(ARC::type_SM) && ARC_header.namesPos != 0) ||
+        ((ARC_IsType(ARC::type_Solent) || ARC_IsType(ARC::type_LA)) && (ARC_header.namesPos + ARC_header.namesSize) > fileSize)) {
+        wxLogStatus("Not a Climax ARC file!\n");
+        return false;
     }
-    return vecFiles;
+    
+
+    for (i = 0; i < ARC_header.fileCount; i++) {
+        ARC.read((char*)&ARC_FileEntryData, 16);
+
+        if (ARC_IsType(ARC::type_LA)) {
+            ARC_FileEntryData.dataPos += fileSignature;
+        }
+        
+        ARC::loadedARC_Info.fileData.push_back({
+            ARC_FileEntryData.fileName,
+            ARC_FileEntryData.dataPos,
+            ARC_FileEntryData.dataSize,
+            ARC_FileEntryData.dataSizeReal
+        });
+    }
+
+    return true;
 }

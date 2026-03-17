@@ -1,6 +1,6 @@
 <h1 align="center">
   <a>RenderEclipse Tools</a>
-  <img src="./Images/sprog.ico" width="45" align="top">
+  <img src="./images/sprog.ico" width="45" align="top">
 </h1>
 
 <h4 align="center">A toolset and documentation for reverse-engineer Climax's Silent Hill Games</h4>
@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src='./Images/sh0dogotravis.gif'>
+  <img src='./images/sh0dogotravis.gif'>
 </p>
 
 # Introduction

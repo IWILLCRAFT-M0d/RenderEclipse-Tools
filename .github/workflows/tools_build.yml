@@ -1,0 +1,85 @@
+name: Build tools
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'scripts/**'
+      - 'images/**'
+      - '**.md'
+
+permissions:
+  contents: read
+  
+jobs:
+  build:
+    name: Build Tools
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Ninja
+        uses: ashutoshvarma/setup-ninja@master
+        with:
+          version: 1.10.0
+      
+      - name: Run CMake
+        working-directory: src
+        run: cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Release
+      
+      - name: Build
+        working-directory: src
+        run: cmake --build build
+      
+      - name: Create hashes.reth
+        working-directory: src
+        shell: cmd
+        run: dir && "build/RETH.exe" "RETH/filenames.txt" "" "build/hashes.reth"
+      
+      - name: Upload files
+        uses: actions/upload-artifact@v4
+        with:
+           name: RenderEclipseTools
+           path: |
+             ./src/build/CAM.exe
+             ./src/build/hashes.reth
+             ./src/build/dataSplitter.exe
+             ./src/build/RETH.exe
+             ./src/build/Str-Hash-Test.exe
+      
+  push:
+    needs: build
+    if: github.repository == 'IWILLCRAFT-M0d/RenderEclipse-Tools'
+    name: Prepare Release
+    runs-on: windows-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: RenderEclipseTools
+          path: ./RenderEclipseTools
+      
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEJAMEENTRAR }}
+        with:
+          tag_name: test-release
+          release_name: RenderEclipseTools
+          draft: true
+          prerelease: false
+      
+      - name: Compress back
+        run: Compress-Archive -Path ".\RenderEclipseTools" -DestinationPath ".\RenderEclipseTools.zip"
+        shell: powershell
+      
+      - name: Push release executables
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEJAMEENTRAR }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: RenderEclipseTools.zip
+          asset_name: RenderEclipseTools.zip
+          asset_content_type: application/zip

@@ -15,8 +15,9 @@ unsigned long SHSMWord2Hash(string text) {
     return hash;
 }
 
-vector<pair<unsigned long, string>> readRETH() {
-    ifstream RETH("./hashes.reth", ios::in | ios_base::binary);
+vector<pair<unsigned long, string>> readRETH(char* arg) {
+    cout << arg << endl;
+    ifstream RETH(arg, ios::in | ios_base::binary);
     if (!RETH.is_open()) {
         printf("Missing file RETH file!\n");
         return {};
@@ -95,14 +96,13 @@ vector<vector<unsigned long>> readARC(string filePath) {
     return vecFiles;
 }
 
-void makeRETH(string ARCfile, bool ARCTxt) {
-    string RETHfile = "./hashes.reth";
+void makeRETH(string ARCfile, bool ARCTxt, char* arg, char* arg1) {
     vector<vector<unsigned long>> ARCdata;
     if (ARCTxt == true) {
         ARCdata = readARC(ARCfile);
     }
 
-    ifstream nameList("./Filenames.txt", ios::in);
+    ifstream nameList(arg, ios::in);
     string tempString;
     vector<string> realFileNames;
     while (getline(nameList, tempString)) {
@@ -120,7 +120,7 @@ void makeRETH(string ARCfile, bool ARCTxt) {
     nameList.close();
     if (realFileNames.size() == 0) { printf("No names inside \"Filenames.txt\" has been found!\n"); return; }
 
-    fstream RETH(RETHfile, ios::in | ios::out | ios_base::binary);
+    fstream RETH(arg1, ios::in | ios::out | ios_base::binary);
     bool RETHexist = true;
     if (!RETH.is_open()) {
         printf("No existing RETH file! Creating a new one.\n");
@@ -144,7 +144,7 @@ void makeRETH(string ARCfile, bool ARCTxt) {
 
         //this checks any duplicate
         hashesCount = RETHHead.hashesCount;
-        vector RETHdata = readRETH();
+        vector RETHdata = readRETH(arg1);
         for (long i = 0; i < RETHdata.size(); i++) {
             transform(RETHdata[i].second.begin(),
             RETHdata[i].second.end(),
@@ -165,7 +165,7 @@ void makeRETH(string ARCfile, bool ARCTxt) {
         RETH.seekp(0, ios::end);
     } else {
         //create mode
-        RETH.open(RETHfile, ios::out | ios_base::binary | ios::trunc);
+        RETH.open(arg1, ios::out | ios_base::binary | ios::trunc);
         RETH.write("uwu ", 8);
     }
     short realFileNameSize;
@@ -200,18 +200,21 @@ void makeRETH(string ARCfile, bool ARCTxt) {
     return;
 }
 
-int main() {
-    string stopValue;
-    cout << "0 = Add values/Create file\n1 = Extract names\n\nTo add values you need to create a file named \"Filenames.txt\" in the same folder of the executable where you will put the name you suppose could be the name of a file and create a file named \"ARCS.txt\" will have the path of the ARC files.\nOmitting the second step will add values without checking if they are used or not.\nPlease introduce a value: ";cin >> stopValue;
-    if (stopValue == "0") {
+int main(int argc, char* argv[]) {
+    if (argc < 3) {
+        cout << "Usage:\nExtract filenames - RETH.exe <path/to/hashes.RETH> <path/to/output>\nGenerate RETH file - RETH.exe <path/to/filelist_to_hash.txt> <path/to/filelist_to_arc.txt> <path/to/output>";
+        return 0;
+    }
+    
+    if (argc == 4) {
         bool ARCSTxt = false;
-        ifstream nameList("./Filenames.txt", ios::in);
+        ifstream nameList(argv[1], ios::in);
         if (!nameList.is_open()) {
             printf("Missing text file!\n");
             return 0;
         }
         nameList.close();
-        ifstream ARCList("./ARCS.txt", ios::in);
+        ifstream ARCList(argv[2], ios::in);
         vector<string> ARCPath;
         if (ARCList.is_open()) {
             ARCSTxt = true;
@@ -227,17 +230,14 @@ int main() {
 
         if (ARCPath.size() != 0) {
             for (long i = 0; i < ARCPath.size(); i++) {
-                makeRETH(ARCPath[i], ARCSTxt);
+                makeRETH(ARCPath[i], ARCSTxt, argv[1], argv[3]);
             }
         } else {
-            makeRETH("", ARCSTxt);
+            makeRETH("", ARCSTxt, argv[1], argv[3]);
         }
-
-        cout << "Process finished" << endl;
-        cin >> stopValue;
-    } else if (stopValue == "1") {
-        vector RETH = readRETH();
-        ofstream txt("Filenames.txt");
+    } else if (argc == 3) {
+        vector RETH = readRETH(argv[1]);
+        ofstream txt(argv[2]);
         for (long i = 0; i < RETH.size(); i++) { txt << RETH[i].second << "\n"; }
         txt.close();
     }
