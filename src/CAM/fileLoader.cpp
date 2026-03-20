@@ -146,11 +146,12 @@ void fileLoader::RW::RWStreamFile(void) {
     unsigned long pos = 0;
     RW::RwHeader data;
     fileLoaded = true;
-    /*
+    data_info.fileName = ARC::loadedARC_Info.fileItemSelected.ToStdString();
     filePanel.RWSFileListTree = new wxTreeCtrl(mainWin->panel1);
     mainWin->infoFileSizer->Add(filePanel.RWSFileListTree, 1, wxEXPAND | wxALL);
-    mainWin->panel1->Refresh();
-    mainFileName = ARC::loadedARC_Info.fileItemSelected.ToStdString();
+    mainWin->panel1->Layout();
+    filePanel.RWSFileListTree->AddRoot(data_info.fileName);
+    /*
     do {
         fileName = "";
         memcpy((char*)&data, data_info.fileData+pos, sizeof(RW::RwHeader)); pos += sizeof(RW::RwHeader);

@@ -13,7 +13,6 @@
 
 
 using namespace std;
-static bool compressImport;
 
 /** @brief RETH (RenderEclipse Tools Hashes) file type
  * ye I did my own file type just bc I want to try to make one by myself
@@ -210,65 +209,54 @@ void ARC::importFile(string fileImportPath) {
     ifstream oldARC(oldARCPath, ios_base::binary | ios::in);
 
     /*
-    Step One:    it will regenerate the file until the end of the table file
-    Step Two:    replace the file size values and the data position of the next data table values in case of need it
-    Step Three:  regenerate the file until the part where the new data is inserted
-    Step Four:   add new data
-    Step Five:   lastly, add the rest of the untouched info
+    Step 1: Regenerate the file until the end of the table file
+    Step 2: Replace the file size values and the data position of the next data table values in case of need it
+    Step 3: Regenerate the file until the part where the new data is inserted
+    Step 4: Add new data
+    Step 5: Lastly, add the rest of the untouched info
     */
 
     // I have to make it practical so the user could import multiple files at
     // the same time without having to regenerate the whole file everytime just
     // one file is being imported
 
-    /*
-    Step zero:
-    Get some of the headers values
-    */
+    // Step 0: Get some of the header information
 
     string fileName = ARC::loadedARC_Info.fileItemSelected.ToStdString();
-    unsigned long unHashedStringFileName2Int = ARC::endianChangeULong(fileName);
-    unsigned long hashedStringFileName2Int = ARC::SHSM_FilenameHash(fileName);
-    unsigned long fileCount, dataStartPos, fileImportIndex, fileNamesPos;
+    unsigned long unHashedStringFileName2Int = ARC::endianChangeULong(fileName),
+    hashedStringFileName2Int = ARC::SHSM_FilenameHash(fileName),
+    selectedFileIndex;
+    bool compressImport = false;
+    ARC::header old_header;
     
-    
+    oldARC.seekg(4, ios::beg);
     switch (ARC::loadedARC_Info.type) {
         case ARC::type_SM:
             //Shattered Memories - 10FA0000
-            oldARC.seekg(4, ios::beg);
-            oldARC.read((char*)&fileCount, 4);
-            oldARC.seekg(8, ios::beg);
-            oldARC.read((char*)&dataStartPos, 4);
+            oldARC.read((char*)&old_header, sizeof(ARC::header));
+            oldARC.seekg(16, ios::beg);
+            break;
         case ARC::type_Solent:
             //Origins UK - 41322E30 (A2.0)
-            oldARC.seekg(4, ios::beg);
-            oldARC.read((char*)&fileCount, 4);
-            oldARC.seekg(8, ios::beg);
-            oldARC.read((char*)&dataStartPos, 4);
-            oldARC.seekg(12, ios::beg);
-            oldARC.read((char*)&fileNamesPos, 4);
+            oldARC.read((char*)&old_header, sizeof(ARC::header));
             break;
         case ARC::type_LA:
             //Origins LA
-            oldARC.read((char*)&fileCount, 4);
-            oldARC.seekg(4, ios::beg);
-            oldARC.read((char*)&dataStartPos, 4);
-            oldARC.seekg(8, ios::beg);
-            oldARC.read((char*)&fileNamesPos, 4);
+            oldARC.seekg(0, ios::beg);
+            oldARC.read((char*)&old_header, sizeof(ARC::header));
             break;
     }
-
-
+    
     // Find the index of the selected file to import
     for (unsigned long i = 0; i < ARC::loadedARC_Info.fileData.size(); i++) {
         if (ARC::loadedARC_Info.type == ARC::type_SM) {
             if (unHashedStringFileName2Int == ARC::loadedARC_Info.fileData[i].fileName
             || hashedStringFileName2Int == ARC::loadedARC_Info.fileData[i].fileName) {
-                fileImportIndex = i;
+                selectedFileIndex = i;
                 break;
             }
         } else if (fileName == ARC::loadedARC_Info.fileNames[i].filename) {
-            fileImportIndex = i;
+            selectedFileIndex = i;
             break;
         }
     }
@@ -280,7 +268,7 @@ void ARC::importFile(string fileImportPath) {
     // May 2006 proto doesn't mention ZLib anywhere
     if (ARC::loadedARC_Info.type != ARC::type_LA) {
         signed long checkCompressImport = wxID_NO;
-        if (ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal == 0) {
+        if (ARC::loadedARC_Info.fileData[selectedFileIndex].dataSizeReal == 0) {
             mainWin->errorMessage = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was not compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
         } else {
             mainWin->errorMessage = new wxMessageDialog(NULL, _("Do you really want to compress this file?\nThis file was compressed"), _("Compress file"), wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION);
@@ -297,10 +285,9 @@ void ARC::importFile(string fileImportPath) {
         delete mainWin->errorMessage;
     }
     
-
-    // Step one: regenerate the ARC until the data start
+    // Step 1: regenerate the ARC until the data start
     fstream newARC(ARC::loadedARC_Info.pathFileLoaded, ios::binary | ios::in | ios::out | ios::trunc);
-    signed long readableData = dataStartPos, dataReadPos = 0, bufferSize = 8192;
+    signed long readableData = old_header.dataStart, dataReadPos = 0, bufferSize = 8192;
     char *rawData, *compressedData;
     bool endfile = false;
    
@@ -323,119 +310,117 @@ void ARC::importFile(string fileImportPath) {
         dataReadPos += 8192;
     }
     
-
-    // Second Step: replace the file data values and the header values
+    // Step 2: replace the file data and header values
     oldARC.seekg(0, ios::end);
-    unsigned long headerSkip = 16, compressedSize = 0, importRealFileSize = fileImport.tellg(),
-    importFileSpace = 0, oldARCSize = oldARC.tellg(); // originalAddress is for step four
-    if (ARC::loadedARC_Info.type == ARC::type_Solent) {headerSkip = 20;}
-
-
+    unsigned long filesDataInfoPos = ARC_IsType(ARC::type_Solent) ? 20 : 16,
+    newFile_padSize                = 0,
+    newFile_compressedSize         = 0,
+    newFile_fileSize               = fileImport.tellg(),
+    oldARCSize                     = oldARC.tellg();
     fileImport.seekg(0, ios::beg);
-    newARC.seekg(headerSkip + (fileImportIndex * 16) + 8, ios::beg);
     
+    // Step 2-1: Calculate space to reserved for the new file in the ARC
     
-    // This calculate space to reserved for each file in the ARC
     // TODO: research the CLA's Origins betas as some of this seems
     // To be using a space minimun of 16 bytes while other 32
     if (ARC::loadedARC_Info.type == ARC::type_LA || compressImport == false) {
         //Don't compress
-
+        
+        newFile_padSize = newFile_fileSize;
         //Calculate space to grab
         switch (ARC::loadedARC_Info.type) {
             case ARC::type_SM:
-                while (importRealFileSize > importFileSpace) {
-                    importFileSpace += 2048;
-                }
-                break;
-            case ARC::type_Solent:
-                while (importRealFileSize > importFileSpace) {
-                    importFileSpace += 32;
+                while ((newFile_padSize % 2048) != 0) {
+                    newFile_padSize++;
                 }
                 break;
             case ARC::type_LA:
-                while (importRealFileSize > importFileSpace) {
-                    importFileSpace += 32;
+            case ARC::type_Solent:
+                while ((newFile_padSize % 32) != 0) {
+                    newFile_padSize++;
                 }
                 break;
         }
+        newFile_padSize -= newFile_fileSize;
 
-        ARC::loadedARC_Info.fileData[fileImportIndex].dataSize = importRealFileSize;
-        ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal = 0;
+        ARC::loadedARC_Info.fileData[selectedFileIndex].dataSize = newFile_fileSize;
+        ARC::loadedARC_Info.fileData[selectedFileIndex].dataSizeReal = 0;
     } else {
         //Compress
-        rawData = new char[importRealFileSize];
+        rawData = new char[newFile_fileSize];
         fileImport.seekg(0, ios::beg);
-        fileImport.read(rawData, importRealFileSize);
+        fileImport.read(rawData, newFile_fileSize);
     
-        compressedSize = compressBound(importRealFileSize);
-        compressedData = new char[compressedSize];
-    
-        compress2((Bytef*)compressedData, &compressedSize, (Bytef*)rawData, importRealFileSize, 9);
+        newFile_compressedSize = compressBound(newFile_fileSize);
+        compressedData = new char[newFile_compressedSize];
+        
+        compress2((Bytef*)compressedData, &newFile_compressedSize, (Bytef*)rawData, newFile_fileSize, 9);
         delete[] rawData;
+        
+        newFile_padSize = newFile_compressedSize;
+        //Calculate space to grab
         switch (ARC::loadedARC_Info.type) {
             case ARC::type_SM:
-                while (compressedSize > importFileSpace) {
-                    importFileSpace += 2048;
+                while ((newFile_padSize % 2048) != 0) {
+                    newFile_padSize++;
                 }
                 break;
+            case ARC::type_LA:
             case ARC::type_Solent:
-                while (compressedSize > importFileSpace) {
-                    importFileSpace += 32;
+                while ((newFile_padSize % 32) != 0) {
+                    newFile_padSize++;
                 }
                 break;
         }
+        newFile_padSize -= newFile_compressedSize;
 
-        ARC::loadedARC_Info.fileData[fileImportIndex].dataSize = compressedSize;
-        ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal = importRealFileSize;
+        ARC::loadedARC_Info.fileData[selectedFileIndex].dataSize = newFile_compressedSize;
+        ARC::loadedARC_Info.fileData[selectedFileIndex].dataSizeReal = newFile_fileSize;
     }
-    newARC.write((char*)&ARC::loadedARC_Info.fileData[fileImportIndex].dataSize, 4);
-    newARC.write((char*)&ARC::loadedARC_Info.fileData[fileImportIndex].dataSizeReal, 4);
-
-
-
-    // temp = get the amount of space changed by the new file
-    // temp1 = save the value of the position of whatever follows the file that is
-    // being imported
-    signed long temp = 0, temp1, temp2;
-
-    if (fileImportIndex != ARC::loadedARC_Info.fileData.size() - 1) {
-        temp1 = ARC::loadedARC_Info.fileData[fileImportIndex+1].fileName;
-    } else if (ARC::loadedARC_Info.type == ARC::type_LA) {
-        temp1 = oldARCSize;
+    
+    newARC.seekg(filesDataInfoPos + (selectedFileIndex * 16) + 8, ios::beg);
+    newARC.write((char*)&ARC::loadedARC_Info.fileData[selectedFileIndex].dataSize, 4);
+    newARC.write((char*)&ARC::loadedARC_Info.fileData[selectedFileIndex].dataSizeReal, 4);
+    
+    
+    
+    unsigned long missingOldData,
+    oldDataTotalSpace,
+    newDataTotalSpace = newFile_padSize + ARC::loadedARC_Info.fileData[selectedFileIndex].dataSize,
+    fileEntrydataPosUpdate;
+    signed long newDataDiffSize;
+    
+    // Step 2-2: Get position of the remaining data from old ARC file.
+    if (selectedFileIndex != ARC::loadedARC_Info.fileData.size() - 1) {
+        missingOldData = ARC::loadedARC_Info.fileData[selectedFileIndex+1].dataPos;
+    } else if (ARC_IsType(ARC::type_SM)) {
+        missingOldData = oldARCSize;
     } else {
-        temp1 = fileNamesPos;
+        missingOldData = old_header.namesPos;
     }
+    oldDataTotalSpace = missingOldData - ARC::loadedARC_Info.fileData[selectedFileIndex].dataPos;
 
-
-
-    if (importFileSpace < (temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName)) {
-        temp =  -((temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName) - importFileSpace);
-    } else {
-        temp = importFileSpace - (temp1 - ARC::loadedARC_Info.fileData[fileImportIndex].fileName);
+    // Step 2-3: Get the amount of space to rest/sum to next files position addresses.
+    newDataDiffSize = newDataTotalSpace - oldDataTotalSpace;
+    
+    for (unsigned long i = selectedFileIndex+1; old_header.fileCount > i; i++) {
+        newARC.seekg(filesDataInfoPos + (i * 16) + 4, ios::beg);
+        ARC::loadedARC_Info.fileData[i].dataPos += newDataDiffSize;
+        fileEntrydataPosUpdate = ARC_IsNotType(ARC::type_LA) ? ARC::loadedARC_Info.fileData[i].dataPos : (ARC::loadedARC_Info.fileData[i].dataPos - old_header.dataStart);
+        newARC.write((char*)&fileEntrydataPosUpdate, 4);
     }
-
-    for (unsigned long i = fileImportIndex+1; fileCount > i; i++) {
-        newARC.seekg(headerSkip + (i * 16) + 4, ios::beg);
-        ARC::loadedARC_Info.fileData[i].fileName += temp;
-        if (ARC::loadedARC_Info.type != ARC::type_LA) {
-            temp2 = ARC::loadedARC_Info.fileData[i].fileName;
-        } else {
-            temp2 = ARC::loadedARC_Info.fileData[i].fileName - dataStartPos;
-        }
-        newARC.write((char*)&temp2, 4);
+    
+    // Step 2-4: Set update ARC header info
+    // - Non-SHSM games: update name position
+    if (ARC_IsNotType(ARC::type_SM)) {
+        old_header.namesPos += newDataDiffSize;
+        newARC.seekg(filesDataInfoPos - 8, ios::beg);
+        newARC.write((char*)&old_header.namesPos, 4);
     }
-
-
-    if (ARC::loadedARC_Info.type != ARC::type_SM) {
-        fileNamesPos += temp;
-        newARC.seekg(headerSkip - 8, ios::beg);
-        newARC.write((char*)&fileNamesPos, 4);
-    }
-
-    // Third Step: regenerate the file until the part where the new data is inserted
-    readableData = ARC::loadedARC_Info.fileData[fileImportIndex].dataPos - dataStartPos;
-    dataReadPos = dataStartPos;
+    
+    // Step 3: Regenerate the file until the part where the new data is inserted
+    readableData = ARC::loadedARC_Info.fileData[selectedFileIndex].dataPos - old_header.dataStart;
+    dataReadPos = old_header.dataStart;
     endfile = false;
     newARC.seekg(dataReadPos, ios::beg);
     bufferSize = 8192;
@@ -456,13 +441,11 @@ void ARC::importFile(string fileImportPath) {
         }
         dataReadPos += 8192;
     }
-
-
-    // Fourth step: add new data
-    newARC.seekg(ARC::loadedARC_Info.fileData[fileImportIndex].dataPos, ios::beg);
-    if (ARC::loadedARC_Info.type == ARC::type_LA || compressImport == false) {
-        // The file is NOT being compressed
-        readableData = importRealFileSize;
+    
+    // Step 4: Add new data
+    newARC.seekg(ARC::loadedARC_Info.fileData[selectedFileIndex].dataPos, ios::beg);
+    if (ARC_IsType(ARC::type_LA) || compressImport == false) {
+        readableData = newFile_fileSize;
         dataReadPos = 0;
         endfile = false;
         bufferSize = 8192;
@@ -479,7 +462,7 @@ void ARC::importFile(string fileImportPath) {
             
             delete[] rawData;
             if (endfile) {
-                bufferSize = importFileSpace - importRealFileSize;
+                bufferSize = newFile_padSize;
                 while (bufferSize > 0) {
                     newARC.write((char*)"", 1);
                     bufferSize--;
@@ -490,19 +473,19 @@ void ARC::importFile(string fileImportPath) {
         }
     } else {
         // The file is NOT being compressed
-        newARC.write((char*)&compressedData[0], compressedSize);
+        newARC.write((char*)&compressedData[0], newFile_compressedSize);
         delete[] compressedData;
-        bufferSize = importFileSpace - compressedSize;
+        bufferSize = newFile_padSize;
         while (bufferSize > 0) {
             newARC.write((char*)"", 1);
             bufferSize--;
         }
     }
     fileImport.close();
-
-    // Fifth step: lastly, add the rest of the untouched info
-    readableData = oldARCSize - temp1;
-    dataReadPos = temp1;
+    
+    // Step 5: lastly, add the rest of the untouched info
+    readableData = oldARCSize - missingOldData;
+    dataReadPos = missingOldData;
     bufferSize = 8192;
     endfile = false;
     while (true) {
@@ -522,9 +505,7 @@ void ARC::importFile(string fileImportPath) {
         }
         dataReadPos += 8192;
     }
-
-
-
+    
     oldARC.close();
     newARC.close();
     std::remove(oldARCPath.c_str());
@@ -577,7 +558,7 @@ bool ARC::read(void) {
         ARC.read((char*)&ARC_FileEntryData, 16);
 
         if (ARC_IsType(ARC::type_LA)) {
-            ARC_FileEntryData.dataPos += fileSignature;
+            ARC_FileEntryData.dataPos += ARC_header.dataStart;
         }
         
         ARC::loadedARC_Info.fileData.push_back({

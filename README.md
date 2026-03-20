@@ -33,11 +33,6 @@ DataSplitter is a CLI tool that extracts RenderWare Stream and Silent Hill: Shat
 
 Silent Hill: Origins PS2 May 17, 2006 requires some modifications with an Hex editor as files contains 192 bytes of gibberish data at the beginning of each file.
 
-### DataSplitter-IGCStream
-DataSplitter-IGCStream is a experimental CLI tool that extracts files from Silent Hill: Shattered Memories \*.IGCStream files. For it usage drag and drop the proper file over the *.exe and it will start working.
-
-This tool currently only intends to work with Shattered Memories.
-
 ### FBXFtest
 FBXFtest is a CLI barebones reader of the obfusctation method of \*.XML/\*.XAML files from Silent Hill: Shattered Memories. For it usage drag and drop the proper file over the \*.exe and it will start working.
 

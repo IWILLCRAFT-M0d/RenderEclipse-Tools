@@ -20,7 +20,7 @@ MainFrame::MainFrame(const wxString& titleBar): wxFrame(nullptr, wxID_ANY, title
     wxLog* logger = new wxLogWindow(this, "Test", true, false);
     wxLog::SetActiveTarget(logger);
 #endif // DEBOOG
-
+    
     wxMenuBar* menuBar_Main = new wxMenuBar();
     wxMenu* menuBar_Opt_File = new wxMenu();
     wxMenu* menuBar_Opt_Abt = new wxMenu();
@@ -101,18 +101,20 @@ void MainFrame::MenuBar_OpenARC(wxCommandEvent& evt) {
         HIS_Missing  = 1, // Filenames recognized, but no the totallity from the ARC.
         HIS_Complete = 2  // All filenames recognized.
     };
-
-    unsigned long    fileNameCount = 0;
-    unsigned long    fileCount     = 0;
-    hashesInfoStatus HIS           = HIS_Null;
+    std::string      prevPathFileLoaded;
+    unsigned long    fileNameCount      = 0;
+    unsigned long    fileCount          = 0;
+    hashesInfoStatus HIS                = HIS_Null;
 
     wxFileDialog fileARC(this, "Open ARC file", "", "", "ARC file (*.ARC)|*.ARC", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (fileARC.ShowModal() == wxID_CANCEL) { wxLogStatus("No file has been open"); return; }
 
+    prevPathFileLoaded = ARC::loadedARC_Info.pathFileLoaded;
     ARC::loadedARC_Info.pathFileLoaded = fileARC.GetPath().ToStdString();
 
     if (ARC::read() == false) {
         ARC::loadedARC_Info.pathFileLoaded.clear();
+        ARC::loadedARC_Info.pathFileLoaded = prevPathFileLoaded;
         errorMessage = new wxMessageDialog(NULL, wxT("Invalid *.ARC file"), wxT("Error"), wxOK | wxICON_ERROR);
         errorMessage->ShowModal();
         delete errorMessage;

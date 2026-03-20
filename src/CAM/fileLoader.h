@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 //#include <vector>
 
 /** @brief Abreviature meanings and format.
@@ -23,6 +24,7 @@ namespace fileLoader {
     struct file_DataInfo {
         char*         fileData;
         unsigned long fileSize;
+        std::string   fileName;
     };
     
     struct fileInfoPanel {
